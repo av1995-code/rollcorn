@@ -5,7 +5,7 @@
     "tagline": "Iowa sports headlines, gathered from around the web."
   },
   "days_to_keep": 14,
-  "latest_count": 9,
+  "latest_count": 10,
   "per_sport_count": 10,
   "sports": [
     {"id": "womens-basketball", "name": "Women's basketball",

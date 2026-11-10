@@ -10,8 +10,11 @@
 <meta property="og:description" content="{{tagline}}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{url}}/">
+<meta property="og:image" content="{{url}}/share.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#FFCD00">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
@@ -58,8 +61,14 @@
   <section class="latest" id="latest" aria-labelledby="h-latest">
     <h2 class="sign" id="h-latest">Latest</h2>
     <div class="latest-body">
-      {{lead}}
-      <ul class="stories latest-rest">{{latest}}</ul>
+      <div class="latest-main">
+        {{lead}}
+        <ul class="runners">{{runners}}</ul>
+      </div>
+      <div class="justin">
+        <h3 class="justin-title">Just in</h3>
+        <ol class="briefs">{{latest}}</ol>
+      </div>
     </div>
   </section>
 
@@ -74,17 +83,20 @@
 </footer>
 
 <script>
+// Times: "3 hours ago" under headlines, "3h" in the Just in column.
 (function () {
-  if (!window.Intl || !Intl.RelativeTimeFormat) return;
-  var fmt = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  var steps = [["day", 86400], ["hour", 3600], ["minute", 60]];
+  var long = window.Intl && Intl.RelativeTimeFormat
+    ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }) : null;
+  var steps = [["day", 86400, "d"], ["hour", 3600, "h"], ["minute", 60, "m"]];
   function refresh() {
     document.querySelectorAll("time[datetime]").forEach(function (el) {
-      var secs = (new Date(el.dateTime) - Date.now()) / 1000;
+      var secs = (Date.now() - new Date(el.dateTime)) / 1000;
       if (!el.title) el.title = el.textContent;
       for (var i = 0; i < steps.length; i++) {
-        if (Math.abs(secs) >= steps[i][1] || i === steps.length - 1) {
-          el.textContent = fmt.format(Math.round(secs / steps[i][1]), steps[i][0]);
+        if (secs >= steps[i][1] || i === steps.length - 1) {
+          var n = Math.max(0, Math.round(secs / steps[i][1]));
+          if (el.hasAttribute("data-short")) el.textContent = n + steps[i][2];
+          else if (long) el.textContent = long.format(-n, steps[i][0]);
           return;
         }
       }
@@ -92,6 +104,23 @@
   }
   refresh();
   setInterval(refresh, 60000);
+})();
+</script>
+<script>
+// Mark headlines published since this browser last opened the page.
+(function () {
+  var last = 0;
+  try { last = Number(localStorage.getItem("rollcorn-last-visit")) || 0; } catch (e) {}
+  if (last) {
+    document.querySelectorAll(".story, .brief").forEach(function (el) {
+      var t = el.querySelector("time[datetime]");
+      if (t && new Date(t.dateTime).getTime() > last) el.classList.add("is-new");
+    });
+  }
+  // Remember this visit once the reader has had a moment with the page.
+  setTimeout(function () {
+    try { localStorage.setItem("rollcorn-last-visit", String(Date.now())); } catch (e) {}
+  }, 4000);
 })();
 </script>
 <script>

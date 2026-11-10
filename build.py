@@ -229,18 +229,34 @@ def esc(text):
     return html.escape(text, quote=True)
 
 
-def stamp(d):
+def stamp(d, short=False):
+    """A <time> tag. The page's script rewrites the text as "3 hours ago"
+    (or "3h" when short); the text here is what shows without scripts."""
     local_d = d.astimezone(CENTRAL)
+    if short:
+        same_day = local_d.date() == NOW.astimezone(CENTRAL).date()
+        text = local_d.strftime("%-I:%M %p" if same_day else "%b %-d")
+        return '<time class="when" data-short datetime="%s">%s</time>' % (
+            d.strftime("%Y-%m-%dT%H:%M:%SZ"), text)
     text = local_d.strftime("%b %-d, %-I:%M %p")
     return '<time datetime="%s">%s</time>' % (d.strftime("%Y-%m-%dT%H:%M:%SZ"), text)
 
 
-def story(it, tag="li"):
+def story(it, tag="li", cls="story"):
     return (
-        '<{t} class="story"><a href="{href}" rel="noopener">{title}</a>'
+        '<{t} class="{cls}"><a href="{href}" rel="noopener">{title}</a>'
         '<p class="from"><span class="source">{src}</span> {when}</p></{t}>'
-    ).format(t=tag, href=esc(it["link"]), title=esc(it["title"]),
+    ).format(t=tag, cls=cls, href=esc(it["link"]), title=esc(it["title"]),
              src=esc(it["source"]), when=stamp(it["date"]))
+
+
+def brief(it):
+    """One line of the "just in" timeline: time first, then the headline."""
+    return (
+        '<li class="brief">{when}<div><a href="{href}" rel="noopener">{title}</a>'
+        '<p class="from"><span class="source">{src}</span></p></div></li>'
+    ).format(href=esc(it["link"]), title=esc(it["title"]),
+             src=esc(it["source"]), when=stamp(it["date"], short=True))
 
 
 def render(items):
@@ -251,23 +267,48 @@ def render(items):
              "volleyball", "baseball", "softball", "more"]
     sports.sort(key=lambda s: order.index(s["id"]) if s["id"] in order else 99)
 
+    # The busiest sport of the past three days leads the page and gets the
+    # wide row, so whatever is in season rises without anyone editing a list.
+    recent = NOW - dt.timedelta(days=3)
+    week = NOW - dt.timedelta(days=7)
+    other = CFG["other_sport"]["id"]
+
+    def heat(s):
+        if s["id"] == other:
+            return -1
+        return sum(1 for it in items if it["sport"] == s["id"] and it["date"] >= recent)
+
+    sports.sort(key=heat, reverse=True)   # stable: ties keep the fan's order
+
+    # top of the page: one lead story, three runners-up beneath it,
+    # and the rest as the Just in timeline beside them
     latest = items[: CFG["latest_count"]]
-    lead, rest = latest[0], latest[1:]
+    lead, runners, rest = latest[0], latest[1:4], latest[4:]
 
     nav = "".join('<a href="#%s">%s</a>' % (s["id"], esc(s["name"])) for s in sports)
 
     sections = []
-    for s in sports:
-        mine = [it for it in items if it["sport"] == s["id"]][: CFG["per_sport_count"]]
+    for n, s in enumerate(sports):
+        wide = n == 0
+        limit = CFG["per_sport_count"] + (3 if wide else 0)
+        all_mine = [it for it in items if it["sport"] == s["id"]]
+        mine = all_mine[:limit]
+        this_week = sum(1 for it in all_mine if it["date"] >= week)
         if mine:
-            body = '<ul class="stories">%s</ul>' % "".join(story(it) for it in mine)
+            body = ('<div class="plot-body">%s<ul class="stories">%s</ul></div>' % (
+                story(mine[0], "article", "story story-top"),
+                "".join(story(it) for it in mine[1:])))
+            meta = "%d %s this week" % (this_week, "story" if this_week == 1 else "stories")
         else:
             body = ('<p class="quiet">No headlines in the past %d days. '
                     'This row fills in when the season picks up.</p>' % CFG["days_to_keep"])
+            meta = "Out of season"
         sections.append(
-            '<section class="plot" id="{id}" aria-labelledby="h-{id}">'
-            '<h2 class="sign" id="h-{id}">{name}</h2>{body}</section>'
-            .format(id=s["id"], name=esc(s["name"]), body=body))
+            '<section class="plot{wide}" id="{id}" aria-labelledby="h-{id}">'
+            '<header class="plot-head"><h2 class="sign" id="h-{id}">{name}</h2>'
+            '<p class="plot-meta">{meta}</p></header>{body}</section>'
+            .format(wide=" plot-wide" if wide else "", id=s["id"],
+                    name=esc(s["name"]), meta=meta, body=body))
 
     sources = sorted({it["source"] for it in items}, key=str.lower)
     template = (ROOT / "template.html").read_text()
@@ -277,8 +318,9 @@ def render(items):
             .replace("{{url}}", esc(site["url"]))
             .replace("{{updated}}", stamp(NOW))
             .replace("{{nav}}", nav)
-            .replace("{{lead}}", story(lead, "article"))
-            .replace("{{latest}}", "".join(story(it) for it in rest))
+            .replace("{{lead}}", story(lead, "article", "story lead"))
+            .replace("{{runners}}", "".join(story(it) for it in runners))
+            .replace("{{latest}}", "".join(brief(it) for it in rest))
             .replace("{{sections}}", "\n".join(sections))
             .replace("{{sources}}", ", ".join(esc(s) for s in sources))
             .replace("{{count}}", str(len(items))))
