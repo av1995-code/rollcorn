@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{name}}: Iowa sports headlines</title>
+<meta name="description" content="{{tagline}} Football, basketball, wrestling and more, updated through the day.">
+<link rel="canonical" href="{{url}}/">
+<meta property="og:title" content="{{name}}: Iowa sports headlines">
+<meta property="og:description" content="{{tagline}}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{url}}/">
+<meta name="theme-color" content="#FFCD00">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body id="top">
+<a class="skip" href="#latest">Skip to headlines</a>
+
+<!-- The logo's O: an ear of corn with its husk rolled around it into a wheel. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="kernels" width="12.6" height="21" patternUnits="userSpaceOnUse" x="-6.3" y="-44">
+      <rect x="1.1" y="1.1" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
+      <rect x="-5.2" y="11.6" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
+      <rect x="7.4" y="11.6" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
+    </pattern>
+    <symbol id="ear" viewBox="0 0 120 120">
+      <path d="M39 103 L31 115" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+      <g transform="translate(62 58) rotate(30)">
+        <path d="M0 -43 C12 -43 19.5 -23 19.5 2 C19.5 26 13 42 0 42 C-13 42 -19.5 26 -19.5 2 C-19.5 -23 -12 -43 0 -43Z" fill="#000"/>
+        <path d="M0 -43 C12 -43 19.5 -23 19.5 2 C19.5 26 13 42 0 42 C-13 42 -19.5 26 -19.5 2 C-19.5 -23 -12 -43 0 -43Z" fill="url(#kernels)" stroke="#000" stroke-width="4.5"/>
+      </g>
+      <g stroke="#000" stroke-width="4.5" stroke-linejoin="round">
+        <path d="M32 108.5 A56 56 0 0 0 112.6 40.8 A59.6 59.6 0 0 1 45.8 95.2Z" fill="#22753A"/>
+        <path d="M40.8 112.6 A56 56 0 1 1 88 11.5 A50.3 50.3 0 0 0 37.1 92.8Z" fill="#3FA34D"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="masthead">
+  <div class="masthead-sign">
+    <h1 class="wordmark" aria-label="{{name}}"><span aria-hidden="true"><span class="word">R<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>LL</span> <span class="word">C<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>RN</span></span></h1>
+    <p class="tagline">{{tagline}}</p>
+    <p class="updated">Updated {{updated}}</p>
+  </div>
+</header>
+
+<nav class="jump" aria-label="Sports">
+  <div class="jump-inner"><a class="jump-home" href="#top" aria-label="Back to top"><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></a>{{nav}}</div>
+</nav>
+
+<main>
+  <section class="latest" id="latest" aria-labelledby="h-latest">
+    <h2 class="sign" id="h-latest">Latest</h2>
+    <div class="latest-body">
+      {{lead}}
+      <ul class="stories latest-rest">{{latest}}</ul>
+    </div>
+  </section>
+
+  <div class="field">
+{{sections}}
+  </div>
+</main>
+
+<footer class="foot">
+  <p>{{name}} links to {{count}} recent stories from {{sources}}. Every headline opens the original publisher's page.</p>
+  <p>{{name}} is an independent fan site. It is not affiliated with, endorsed by, or sponsored by the University of Iowa or its athletics department.</p>
+</footer>
+
+<script>
+(function () {
+  if (!window.Intl || !Intl.RelativeTimeFormat) return;
+  var fmt = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  var steps = [["day", 86400], ["hour", 3600], ["minute", 60]];
+  function refresh() {
+    document.querySelectorAll("time[datetime]").forEach(function (el) {
+      var secs = (new Date(el.dateTime) - Date.now()) / 1000;
+      if (!el.title) el.title = el.textContent;
+      for (var i = 0; i < steps.length; i++) {
+        if (Math.abs(secs) >= steps[i][1] || i === steps.length - 1) {
+          el.textContent = fmt.format(Math.round(secs / steps[i][1]), steps[i][0]);
+          return;
+        }
+      }
+    });
+  }
+  refresh();
+  setInterval(refresh, 60000);
+})();
+</script>
+<script>
+// The corn wheels roll as the page scrolls.
+(function () {
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var root = document.documentElement, queued = false;
+  function roll() {
+    queued = false;
+    root.style.setProperty("--roll", (window.scrollY * 0.45).toFixed(1) + "deg");
+  }
+  window.addEventListener("scroll", function () {
+    if (!queued) { queued = true; requestAnimationFrame(roll); }
+  }, { passive: true });
+  roll();
+})();
+</script>
+</body>
+</html>

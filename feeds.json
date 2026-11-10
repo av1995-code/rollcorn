@@ -1,0 +1,44 @@
+{
+  "site": {
+    "name": "Roll Corn",
+    "url": "https://rollcorn.com",
+    "tagline": "Iowa sports headlines, gathered from around the web."
+  },
+  "days_to_keep": 14,
+  "latest_count": 9,
+  "per_sport_count": 10,
+  "sports": [
+    {"id": "womens-basketball", "name": "Women's basketball",
+     "keywords": ["women's basketball", "womens basketball", "women's hoops", "wbb", "jan jensen"]},
+    {"id": "football", "name": "Football",
+     "keywords": ["football", "kinnick", "ferentz", "quarterback", "touchdown", "bowl game", "nfl draft", "offensive line", "running back", "linebacker"]},
+    {"id": "mens-basketball", "name": "Men's basketball",
+     "keywords": ["men's basketball", "mens basketball", "basketball", "mbb", "carver-hawkeye", "mccollum"]},
+    {"id": "wrestling", "name": "Wrestling",
+     "keywords": ["wrestl", "brands", "dual meet"]},
+    {"id": "volleyball", "name": "Volleyball",
+     "keywords": ["volleyball"]},
+    {"id": "baseball", "name": "Baseball",
+     "keywords": ["baseball", "heller"]},
+    {"id": "softball", "name": "Softball",
+     "keywords": ["softball"]}
+  ],
+  "other_sport": {"id": "more", "name": "More sports"},
+  "feeds": [
+    {"name": "Iowa Athletics", "url": "https://hawkeyesports.com/feed/"},
+    {"name": "The Daily Iowan", "url": "https://dailyiowan.com/category/sports/feed/"},
+    {"name": "Black Heart Gold Pants", "url": "https://www.blackheartgoldpants.com/rss/index.xml"},
+    {"name": "Go Iowa Awesome", "url": "https://www.goiowaawesome.com/rss/"},
+    {"name": "On3", "url": "https://www.on3.com/teams/iowa-hawkeyes/feed/", "must_mention": ["iowa", "hawkeye"]},
+
+    {"google_news": "\"Iowa Hawkeyes\" football", "sport": "football"},
+    {"google_news": "\"Iowa Hawkeyes\" men's basketball", "sport": "mens-basketball"},
+    {"google_news": "\"Iowa Hawkeyes\" women's basketball", "sport": "womens-basketball"},
+    {"google_news": "\"Iowa Hawkeyes\" wrestling", "sport": "wrestling"},
+    {"google_news": "\"Iowa Hawkeyes\" volleyball", "sport": "volleyball"},
+    {"google_news": "\"Iowa Hawkeyes\" baseball", "sport": "baseball"},
+    {"google_news": "\"Iowa Hawkeyes\" softball", "sport": "softball"}
+  ],
+  "skip_sources": [],
+  "other_schools": ["iowa state", "cyclones", "cyclone", "northern iowa", "uni panthers"]
+}

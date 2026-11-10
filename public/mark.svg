@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Roll Corn mark: an ear of corn with its husk rolled around it">
+  <defs>
+    <pattern id="kernels" width="12.6" height="21" patternUnits="userSpaceOnUse" x="-6.3" y="-44">
+      <rect x="1.1" y="1.1" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
+      <rect x="-5.2" y="11.6" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
+      <rect x="7.4" y="11.6" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
+    </pattern>
+  </defs>
+  <path d="M39 103 L31 115" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+  <g transform="translate(62 58) rotate(30)">
+    <path d="M0 -43 C12 -43 19.5 -23 19.5 2 C19.5 26 13 42 0 42 C-13 42 -19.5 26 -19.5 2 C-19.5 -23 -12 -43 0 -43Z" fill="#000"/>
+    <path d="M0 -43 C12 -43 19.5 -23 19.5 2 C19.5 26 13 42 0 42 C-13 42 -19.5 26 -19.5 2 C-19.5 -23 -12 -43 0 -43Z" fill="url(#kernels)" stroke="#000" stroke-width="4.5"/>
+  </g>
+  <g stroke="#000" stroke-width="4.5" stroke-linejoin="round">
+    <path d="M32 108.5 A56 56 0 0 0 112.6 40.8 A59.6 59.6 0 0 1 45.8 95.2Z" fill="#22753A"/>
+    <path d="M40.8 112.6 A56 56 0 1 1 88 11.5 A50.3 50.3 0 0 0 37.1 92.8Z" fill="#3FA34D"/>
+  </g>
+</svg>
