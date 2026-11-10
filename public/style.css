@@ -13,18 +13,7 @@
   --sign-text: #000000;
   --measure: 36rem;
   --gutter: clamp(1rem, 4vw, 3rem);
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #FFFFFF;
-    --paper: #000000;
-    --husk: #B5B39C;
-    --furrow: #2B2A22;
-    --stake: #FFCD00;
-    --clock: #FFCD00;
-  }
+  color-scheme: light;   /* white page for everyone, whatever the device theme */
 }
 
 * { box-sizing: border-box; }
