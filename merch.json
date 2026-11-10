@@ -1,0 +1,23 @@
+{
+  "intro": "Shirts, a cap and tailgate gear with the corn wheel on them. These are the first designs. Nothing is for sale yet.",
+  "products": [
+    {"name": "Corn Wheel tee", "art": "tee-wheel",
+     "blurb": "Black tee with the wheel on a gold disc, front and center.",
+     "price": "", "url": ""},
+    {"name": "Seed Sign tee", "art": "tee-sign",
+     "blurb": "White tee carrying the yellow sign from the top of the site.",
+     "price": "", "url": ""},
+    {"name": "Row Marker crewneck", "art": "crew-gold",
+     "blurb": "Gold sweatshirt with the name stacked large in black, for cold Saturdays.",
+     "price": "", "url": ""},
+    {"name": "Corn Wheel cap", "art": "cap-black",
+     "blurb": "Black cap with a gold wheel patch.",
+     "price": "", "url": ""},
+    {"name": "Tailgate can cooler", "art": "cooler-gold",
+     "blurb": "Gold cooler with the wheel wrapped around it.",
+     "price": "", "url": ""},
+    {"name": "Sticker pair", "art": "stickers",
+     "blurb": "One round wheel and one seed sign, for a cooler lid or a laptop.",
+     "price": "", "url": ""}
+  ]
+}

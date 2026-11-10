@@ -11,6 +11,12 @@
   --stake: #000000;     /* the line running down from each sign */
   --clock: #000000;     /* the time column in Just in */
   --sign-text: #000000;
+  /* type: Antonio for display, Roboto for reading, Roboto Condensed for
+     tight labels, Zilla Slab as the accent */
+  --display: "Antonio", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --text: "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --condensed: "Roboto Condensed", "Arial Narrow", "Roboto", sans-serif;
+  --slab: "Zilla Slab", Georgia, serif;
   --measure: 36rem;
   --gutter: clamp(1rem, 4vw, 3rem);
   color-scheme: light;   /* white page for everyone, whatever the device theme */
@@ -25,10 +31,9 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--text);
   font-size: 1rem;
   line-height: 1.45;
-  font-stretch: 100%;
   -webkit-text-size-adjust: 100%;
 }
 @media (min-width: 70rem) { body { font-size: 1.0625rem; } }
@@ -76,13 +81,13 @@ a:focus-visible {
   column-gap: 2rem;
 }
 .wordmark {
+  font-family: var(--display);
   grid-column: 1 / -1;
   margin: 0;
-  font-weight: 900;
-  font-stretch: 62%;
-  font-size: clamp(3.6rem, 17.2vw, 15.5rem);
-  line-height: .8;
-  letter-spacing: -.015em;
+  font-weight: 700;
+  font-size: clamp(3.6rem, 16.4vw, 15rem);
+  line-height: .95;
+  letter-spacing: 0;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -94,12 +99,13 @@ a:focus-visible {
   transform: rotate(var(--roll, 0deg));
 }
 .wordmark .ear {
-  width: .85em;
-  height: .85em;
+  width: .96em;
+  height: .96em;
   margin: 0 -.01em;
-  vertical-align: -.09em;
+  vertical-align: -.055em;
   animation: roll-in 1.2s cubic-bezier(.2, .7, .2, 1) backwards;
 }
+.wordmark-link { color: inherit; text-decoration: none; }
 .wordmark .word { display: inline-block; }
 .wordmark .word + .word { margin-left: .16em; }
 .wordmark .word + .word .ear { animation-delay: .12s; }
@@ -111,9 +117,10 @@ a:focus-visible {
   .wordmark .ear { animation: none; }
 }
 .tagline {
+  font-family: var(--slab);
   margin: clamp(.8rem, 2vw, 1.4rem) 0 0;
   font-size: clamp(1rem, 1.7vw, 1.3rem);
-  font-weight: 600;
+  font-weight: 500;
   max-width: 30ch;
   line-height: 1.25;
 }
@@ -159,33 +166,51 @@ a:focus-visible {
 }
 .jump-inner {
   display: flex;
-  gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: center;
+  gap: clamp(.75rem, 2vw, 1.5rem);
   max-width: 90rem;
   margin: 0 auto;
   padding: 0 var(--gutter);
+}
+.jump-sports {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: clamp(1rem, 2.5vw, 2rem);
   overflow-x: auto;
   scrollbar-width: none;
 }
-.jump-inner::-webkit-scrollbar { display: none; }
-.jump a {
+.jump-sports::-webkit-scrollbar { display: none; }
+.jump-sports a {
+  font-family: var(--condensed);
   flex: none;
   padding: .8rem 0 .65rem;
   border-bottom: 4px solid transparent;
-  font-stretch: 80%;
   font-weight: 700;
   font-size: 1rem;
   text-decoration: none;
   white-space: nowrap;
 }
-.jump a:hover { border-bottom-color: var(--gold); }
+.jump-sports a:hover { border-bottom-color: var(--gold); }
 .jump a:focus-visible { outline-color: var(--gold); outline-offset: -3px; }
-.jump .jump-home {
-  display: flex;
-  align-items: center;
-  padding: 0;
-  border-bottom: 0;
-}
+.jump-home { flex: none; display: flex; align-items: center; }
 .jump-home .ear { height: 2.1rem; width: 2.1rem; }
+/* the Merch tab is a small seed sign, always in view at the right */
+.jump-merch {
+  font-family: var(--display);
+  flex: none;
+  padding: .32em .62em .24em;
+  border-radius: 5px;
+  background: var(--gold);
+  color: #000;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.jump-merch:hover,
+.jump-merch[aria-current="page"] { background: #fff; }
 
 /* ---------- signs and stakes ---------- */
 
@@ -196,14 +221,14 @@ main {
 }
 
 .sign {
+  font-family: var(--display);
   display: inline-block;
   margin: 0;
   padding: .3em .6em .22em;
   background: var(--gold);
   color: var(--sign-text);
   border-radius: 5px;
-  font-weight: 900;
-  font-stretch: 68%;
+  font-weight: 700;
   font-size: clamp(1.4rem, 2vw, 1.75rem);
   line-height: 1;
   text-transform: uppercase;
@@ -231,7 +256,7 @@ main {
 .story { max-width: var(--measure); }
 .story a,
 .brief a {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 1.04em;
   line-height: 1.28;
   text-decoration: none;
@@ -259,6 +284,7 @@ main {
 
 /* published since this reader's last visit */
 .is-new .source::before {
+  font-family: var(--condensed);
   content: "New";
   display: inline-block;
   margin-right: .5em;
@@ -266,8 +292,7 @@ main {
   border-radius: 3px;
   background: var(--gold);
   color: #000;
-  font-weight: 800;
-  font-stretch: 80%;
+  font-weight: 700;
 }
 
 .quiet {
@@ -294,11 +319,11 @@ main {
   line-height: 1;
 }
 .lead a {
+  font-family: var(--display);
   font-size: 1em;
-  font-weight: 800;
-  font-stretch: 75%;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -.012em;
+  letter-spacing: 0;
   text-wrap: balance;
 }
 .lead .from { font-size: 1rem; line-height: 1.45; margin-top: 1rem; }
@@ -313,15 +338,16 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: 1.1rem clamp(1.25rem, 2.5vw, 2.25rem);
 }
-.runners .story a { font-size: 1.12em; font-weight: 700; font-stretch: 90%; line-height: 1.2; }
+.runners .story a {
+  font-family: var(--condensed); font-size: 1.12em; font-weight: 700; line-height: 1.2; }
 
 .justin-title {
+  font-family: var(--slab);
   margin: 0;
   padding-bottom: .45rem;
   border-bottom: 3px solid var(--stake);
   font-size: 1.35rem;
-  font-weight: 900;
-  font-stretch: 70%;
+  font-weight: 700;
   line-height: 1;
 }
 .briefs { list-style: none; margin: 0; padding: 0; }
@@ -333,10 +359,10 @@ main {
   border-bottom: 1px solid var(--furrow);
 }
 .brief .when {
+  font-family: var(--condensed);
   padding-top: .08em;
   color: var(--clock);
-  font-weight: 800;
-  font-stretch: 75%;
+  font-weight: 700;
   font-size: 1.05em;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -371,9 +397,9 @@ main {
 /* the first story in each sport carries the row */
 .story-top { padding-bottom: 1rem; }
 .story-top a {
+  font-family: var(--condensed);
   font-size: 1.5em;
-  font-weight: 800;
-  font-stretch: 80%;
+  font-weight: 700;
   line-height: 1.08;
   letter-spacing: -.005em;
   text-wrap: balance;
@@ -389,10 +415,69 @@ main {
     column-gap: clamp(2rem, 4vw, 4rem);
     align-items: start;
   }
-  .plot-wide .story-top a { font-size: clamp(1.9rem, 2.9vw, 2.7rem); line-height: 1.03; }
+  .plot-wide .story-top a {
+  font-family: var(--display); font-size: clamp(1.9rem, 2.9vw, 2.7rem); line-height: 1.03; }
   .plot-wide .stories { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
   .plot-wide .stories .story:first-child { border-top: 0; padding-top: 0; }
 }
+
+/* ---------- merch ---------- */
+
+.merch-body {
+  margin: 0 0 0 .9rem;
+  padding: 1.1rem 0 .25rem 1.4rem;
+  border-left: 3px solid var(--stake);
+}
+.merch-intro {
+  font-family: var(--slab);
+  margin: 0 0 clamp(1.5rem, 3vw, 2.25rem);
+  max-width: 34ch;
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.products {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: clamp(2rem, 3.5vw, 3rem) clamp(1.25rem, 2.5vw, 2.25rem);
+}
+.product-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* a pale table for the product to lie on, lit from the middle */
+  background: radial-gradient(circle at 50% 42%, #FDFCF9 0%, #F3F1E8 55%, #E6E3D6 100%);
+  border-radius: 6px;
+}
+.art-type {
+  font-family: var(--display);
+  font-weight: 700;
+}
+.product-name {
+  font-family: var(--slab);
+  margin: .9rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.product-blurb { margin: .3rem 0 0; color: var(--husk); max-width: 30ch; }
+.product-soon,
+.product-buy {
+  font-family: var(--condensed);
+  display: inline-block;
+  margin: .7rem 0 0;
+  padding: .3em .6em .24em;
+  border-radius: 5px;
+  font-weight: 700;
+  line-height: 1;
+}
+.product-soon { border: 2px solid var(--ink); }
+.product-buy { background: var(--gold); color: #000; text-decoration: none; border: 2px solid #000; }
+.product-buy:hover { background: #000; color: var(--gold); }
 
 /* ---------- footer ---------- */
 
@@ -413,10 +498,10 @@ main {
 
 @media (max-width: 34rem) {
   /* on a phone the two words stack, so each can be large */
-  .wordmark { font-size: clamp(4.4rem, 34vw, 8.6rem); line-height: .9; }
+  .wordmark { font-size: clamp(4.2rem, 32vw, 8.4rem); line-height: 1; }
   .wordmark .word { display: block; }
   .wordmark .word + .word { margin-left: 0; }
   .masthead-sign { grid-template-columns: 1fr; }
   .updated { text-align: left; margin-top: .5rem; }
-  .latest-body, .plot-body, .quiet { margin-left: .5rem; padding-left: 1rem; }
+  .latest-body, .plot-body, .quiet, .merch-body { margin-left: .5rem; padding-left: 1rem; }
 }

@@ -24,6 +24,8 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from zoneinfo import ZoneInfo
 
+import merch
+
 ROOT = pathlib.Path(__file__).resolve().parent
 CFG = json.loads((ROOT / "feeds.json").read_text())
 OUT = ROOT / "public" / "index.html"
@@ -285,7 +287,6 @@ def render(items):
     latest = items[: CFG["latest_count"]]
     lead, runners, rest = latest[0], latest[1:4], latest[4:]
 
-    nav = "".join('<a href="#%s">%s</a>' % (s["id"], esc(s["name"])) for s in sports)
 
     sections = []
     for n, s in enumerate(sports):
@@ -311,19 +312,58 @@ def render(items):
                     name=esc(s["name"]), meta=meta, body=body))
 
     sources = sorted({it["source"] for it in items}, key=str.lower)
-    template = (ROOT / "template.html").read_text()
-    return (template
-            .replace("{{name}}", esc(site["name"]))
-            .replace("{{tagline}}", esc(site["tagline"]))
-            .replace("{{url}}", esc(site["url"]))
-            .replace("{{updated}}", stamp(NOW))
-            .replace("{{nav}}", nav)
-            .replace("{{lead}}", story(lead, "article", "story lead"))
-            .replace("{{runners}}", "".join(story(it) for it in runners))
-            .replace("{{latest}}", "".join(brief(it) for it in rest))
-            .replace("{{sections}}", "\n".join(sections))
-            .replace("{{sources}}", ", ".join(esc(s) for s in sources))
-            .replace("{{count}}", str(len(items))))
+    main_html = ((ROOT / "pages" / "home.html").read_text()
+                 .replace("{{lead}}", story(lead, "article", "story lead"))
+                 .replace("{{runners}}", "".join(story(it) for it in runners))
+                 .replace("{{latest}}", "".join(brief(it) for it in rest))
+                 .replace("{{sections}}", "\n".join(sections)))
+    footer = (
+        "  <p>{name} links to {count} recent stories from {sources}. "
+        "Every headline opens the original publisher's page.</p>\n  " + DISCLAIMER
+    ).format(name=esc(site["name"]), count=len(items),
+             sources=", ".join(esc(s) for s in sources))
+    home = shell(
+        title="%s: Iowa sports headlines" % site["name"],
+        description=site["tagline"] + " Football, basketball, wrestling and more, updated through the day.",
+        path="", home="#top", home_label="Back to top",
+        skip_href="#latest", skip_text="Skip to headlines",
+        aside='<p class="updated">Updated %s</p>' % stamp(NOW),
+        nav=sport_links(sports, ""), merch_current="",
+        main=main_html, footer=footer)
+    return home, sports
+
+
+DISCLAIMER = ("<p>{name} is an independent fan site. It is not affiliated with, endorsed by, "
+              "or sponsored by the University of Iowa or its athletics department.</p>")
+
+
+def sport_links(sports, prefix):
+    return "".join('<a href="%s#%s">%s</a>' % (prefix, s["id"], esc(s["name"])) for s in sports)
+
+
+def shell(**fields):
+    """Fill the shared page frame (masthead, sport bar, footer) around one page."""
+    site = CFG["site"]
+    page = (ROOT / "template.html").read_text()
+    fields.setdefault("name", site["name"])
+    fields.setdefault("tagline", site["tagline"])
+    fields.setdefault("url", site["url"])
+    raw = {"main", "footer", "nav", "aside", "merch_current"}   # already HTML
+    for key, value in fields.items():
+        page = page.replace("{{%s}}" % key, value if key in raw else esc(value))
+    return page.replace("{name}", esc(site["name"]))
+
+
+def render_merch(sports):
+    site = CFG["site"]
+    return shell(
+        title="%s merch" % site["name"],
+        description="%s shirts, hats and tailgate gear with the corn wheel on them." % site["name"],
+        path="merch.html", home="./", home_label="%s home" % site["name"],
+        skip_href="#merch", skip_text="Skip to merch",
+        aside="", nav=sport_links(sports, "./"), merch_current=' aria-current="page"',
+        main=merch.page(json.loads((ROOT / "merch.json").read_text())),
+        footer="  " + DISCLAIMER)
 
 
 def main():
@@ -333,7 +373,9 @@ def main():
         # keep the last good page rather than publish an empty one
         sys.exit("Only %d headlines found; leaving the existing page alone." % len(items))
     OUT.parent.mkdir(exist_ok=True)
-    OUT.write_text(render(items))
+    home, sports = render(items)
+    OUT.write_text(home)
+    (OUT.parent / "merch.html").write_text(render_merch(sports))
     print("Wrote %s with %d headlines." % (OUT.relative_to(ROOT), len(items)), file=sys.stderr)
 
 

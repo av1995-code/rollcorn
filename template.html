@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{name}}: Iowa sports headlines</title>
-<meta name="description" content="{{tagline}} Football, basketball, wrestling and more, updated through the day.">
-<link rel="canonical" href="{{url}}/">
-<meta property="og:title" content="{{name}}: Iowa sports headlines">
-<meta property="og:description" content="{{tagline}}">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<link rel="canonical" href="{{url}}/{{path}}">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
 <meta property="og:type" content="website">
-<meta property="og:url" content="{{url}}/">
+<meta property="og:url" content="{{url}}/{{path}}">
 <meta property="og:image" content="{{url}}/share.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#FFCD00">
@@ -17,11 +17,11 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@700&family=Zilla+Slab:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body id="top">
-<a class="skip" href="#latest">Skip to headlines</a>
+<a class="skip" href="{{skip_href}}">{{skip_text}}</a>
 
 <!-- The logo's O: an ear of corn with its husk rolled around it into a wheel. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -47,39 +47,24 @@
 
 <header class="masthead">
   <div class="masthead-sign">
-    <h1 class="wordmark" aria-label="{{name}}"><span aria-hidden="true"><span class="word">R<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>LL</span> <span class="word">C<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>RN</span></span></h1>
+    <h1 class="wordmark" aria-label="{{name}}"><a class="wordmark-link" href="{{home}}" aria-hidden="true" tabindex="-1"><span class="word">R<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>LL</span> <span class="word">C<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>RN</span></a></h1>
     <p class="tagline">{{tagline}}</p>
-    <p class="updated">Updated {{updated}}</p>
+    {{aside}}
   </div>
 </header>
 
-<nav class="jump" aria-label="Sports">
-  <div class="jump-inner"><a class="jump-home" href="#top" aria-label="Back to top"><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></a>{{nav}}</div>
+<nav class="jump" aria-label="Sections">
+  <div class="jump-inner">
+    <a class="jump-home" href="{{home}}" aria-label="{{home_label}}"><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></a>
+    <div class="jump-sports">{{nav}}</div>
+    <a class="jump-merch" href="merch.html"{{merch_current}}>Merch</a>
+  </div>
 </nav>
 
-<main>
-  <section class="latest" id="latest" aria-labelledby="h-latest">
-    <h2 class="sign" id="h-latest">Latest</h2>
-    <div class="latest-body">
-      <div class="latest-main">
-        {{lead}}
-        <ul class="runners">{{runners}}</ul>
-      </div>
-      <div class="justin">
-        <h3 class="justin-title">Just in</h3>
-        <ol class="briefs">{{latest}}</ol>
-      </div>
-    </div>
-  </section>
-
-  <div class="field">
-{{sections}}
-  </div>
-</main>
+{{main}}
 
 <footer class="foot">
-  <p>{{name}} links to {{count}} recent stories from {{sources}}. Every headline opens the original publisher's page.</p>
-  <p>{{name}} is an independent fan site. It is not affiliated with, endorsed by, or sponsored by the University of Iowa or its athletics department.</p>
+{{footer}}
 </footer>
 
 <script>
