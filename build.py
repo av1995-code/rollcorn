@@ -9,6 +9,7 @@ Run:  python3 build.py
 import datetime as dt
 import email.utils
 import gzip
+import hashlib
 import html
 import http.client
 import json
@@ -348,6 +349,9 @@ def shell(**fields):
     fields.setdefault("name", site["name"])
     fields.setdefault("tagline", site["tagline"])
     fields.setdefault("url", site["url"])
+    # A fingerprint of the stylesheet goes in its address, so a browser never
+    # pairs a new page with an old, remembered copy of the styles.
+    fields.setdefault("css", hashlib.md5((ROOT / "public" / "style.css").read_bytes()).hexdigest()[:10])
     raw = {"main", "footer", "nav", "aside", "merch_current"}   # already HTML
     for key, value in fields.items():
         page = page.replace("{{%s}}" % key, value if key in raw else esc(value))
