@@ -16,12 +16,20 @@
   var ballsEl = document.getElementById("cc-balls");
   var soundBtn = document.getElementById("cc-sound");
   var shareBtn = document.getElementById("cc-share");
+  var typeEl = document.getElementById("cc-type");
+  var nemEl = document.getElementById("cc-nemesis");
+  var mandala = document.getElementById("cc-mandala");
+  var mandalaNote = document.getElementById("cc-mandala-note");
+  var saveBtn = document.getElementById("cc-save");
 
   var GOLD = "#FFCD00", INK = "#000", TURF = "#3FA34D", TURF_DARK = "#2F8F41", HUSK = "#22753A", RED = "#D7261E";
   var DISPLAY = '"Antonio", "Roboto Condensed", "Arial Narrow", sans-serif';
   var LABEL = '"Roboto Condensed", "Arial Narrow", sans-serif';
-  var RANKS = [[0, "Shanked it"], [5, "Scout team"], [15, "Special teams captain"],
-               [30, "All-conference leg"], [60, "Punting is winning"]];
+  var RANKS = [[0, "Warming up"], [5, "Finding your leg"], [15, "Good hang"],
+               [30, "Great hang"], [60, "Punting is winning"]];
+  // What the game says when a punt comes down. It is always on the player's side.
+  var KIND = ["Good try. You have another one in you.", "Nice effort. Shake it off.", "That is how you learn the wind.",
+              "Every punt teaches you something.", "You are getting the feel of it.", "Good swing. Go again."];
   var BALLS = [
     { id: "football", name: "Football", need: 0 },
     { id: "popcorn", name: "Popcorn ball", need: 30 },
@@ -31,12 +39,9 @@
     { id: "dog", name: "Corn dog", need: 1000 }
   ];
 
-  // Kind words painted small on the grass, one every hundred yards. Easy to miss at speed,
-  // but they are plain paint on the field: nothing here is hidden from the player.
-  var CHEERS = ["You've got this", "Nice and easy", "Great hang", "Smooth", "Keep flying", "Good read",
-                "Steady hands", "Beautiful", "That's the way", "Look at you go"];
-
-  // Positive words that flash in the sky for two frames, too quick to read on purpose.
+  // Positive words that flash in the sky for a single frame, too quick to read on purpose,
+  // followed for two frames by a fainter jumble of letters in the same spot (a backward mask),
+  // which is what keeps the word from being noticed.
   // Rule for this list: encouragement for the player only. Nothing that tells anyone
   // to keep playing, buy, share or come back. The page says in "How it works" that they are there.
   var FLASHES = ["You've got this", "You are good at this", "You are capable", "You are enough", "You are doing great",
@@ -57,20 +62,79 @@
   var pot = load("rollcorn-hang-pot") || 150;          // the slots jackpot: it grows with every kernel and every losing spin
   var ballId = loadText("rollcorn-hang-ball") || "football";
   var muted = load("rollcorn-coffin-muted") === 1;
+  var COB = 40;                                        // kernels it takes to fill the ear in the corner
+  var cob = load("rollcorn-hang-cob") % COB;
+  var BEAT = 0.3185;                                   // half the time between taps when the ball is held level
+  var NOTES = [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 1760];   // a scale to climb, one kernel at a time
+  function dayKey(back) {
+    var d = new Date(Date.now() - (back || 0) * 864e5);
+    return "rollcorn-hang-day-" + d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function dayStats(back) {                            // total seconds, punts and best for a day
+    var parts = loadText(dayKey(back)).split(",");
+    return { sum: Number(parts[0]) || 0, count: Number(parts[1]) || 0, best: Number(parts[2]) || 0 };
+  }
+  // How each of the last twenty punts was played: enough to say what kind of punter this is,
+  // and what keeps bringing them down.
+  var hist = [];
+  try { hist = JSON.parse(loadText("rollcorn-hang-hist") || "[]"); } catch (e) { hist = []; }
+  var typeWait = 0;                                    // punts in a row that have read as a different type
+  var ptype = loadText("rollcorn-hang-type");          // the punter's type, once ten punts are in
+  var nem = loadText("rollcorn-hang-nem");             // their nemesis: what downs them most
+  var nemFree = load("rollcorn-hang-nemfree");         // punts in a row not lost to it
+  var CAUSES = {
+    "Lost in the storm": { code: "S", name: "the storm", color: "#5B6475" },
+    "Into the corn": { code: "C", name: "the corn", color: "#3FA34D" },
+    "Picked off by the returner": { code: "R", name: "the returner", color: "#8A1F1F" },
+    "Hit a crow": { code: "W", name: "the crows", color: "#15151A" },
+    "Downed": { code: "G", name: "the ground", color: "#8B5A2B" },
+    "Hit the post": { code: "P", name: "the gate", color: "#D9A300" }
+  };
+  function causeOf(code) { for (var k in CAUSES) if (CAUSES[k].code === code) return CAUSES[k]; return null; }
+  var TYPES = {
+    gambler: ["The Gambler", "You go for the big kernels."],
+    steady: ["The Steady Hand", "Your taps keep an even beat."],
+    storm: ["The Stormchaser", "You fly up near the clouds."],
+    low: ["The Low Flyer", "You skim the corn."],
+    collector: ["The Collector", "You do not leave kernels behind."],
+    natural: ["The Natural", "You play it as it comes."]
+  };
+  // read the last ten punts and pick the trait that stands out most
+  function readType() {
+    var last = hist.slice(-10);
+    if (last.length < 10) return "";
+    var seen = 0, taken = 0, y = 0, cv = 0, cvN = 0, kern = 0, secs = 0;
+    last.forEach(function (h) { seen += h.bs; taken += h.bt; y += h.y; kern += h.k; secs += h.t; if (h.cv >= 0) { cv += h.cv; cvN++; } });
+    var scores = {
+      gambler: seen >= 4 ? (taken / seen - 0.4) / 0.3 : -1,
+      steady: cvN >= 4 ? (0.34 - cv / cvN) / 0.1 : -1,
+      storm: (215 - y / last.length) / 30,
+      low: (y / last.length - 240) / 30,
+      collector: (kern / Math.max(secs, 1) - 0.75) / 0.25
+    };
+    var pick = "natural", top = 0.5;
+    for (var k in scores) if (scores[k] > top) { top = scores[k]; pick = k; }
+    return pick;
+  }
+  var punts = 0;                                       // punts this visit
+  var lastT = 0;                                       // how long the punt before this one hung, this visit
   var freeHelmet = false;                              // won on the slots: the next punt starts with a helmet
 
   var S = null;                                        // the current punt
   var now = 0, shake = 0, tod = 0, flash = 0;
   var particles = [], floaters = [], clouds = [], stars = [];
-  for (var c = 0; c < 5; c++) clouds.push({ x: Math.random() * 1400, y: 30 + Math.random() * 150, s: 0.6 + Math.random() * 0.7 });
-  for (var st = 0; st < 60; st++) stars.push({ x: Math.random(), y: Math.random() * 0.7, r: 0.6 + Math.random() * 1.2, p: Math.random() * 6 });
+  for (var c = 0; c < 3; c++) clouds.push({ x: Math.random() * 1400, y: 30 + Math.random() * 150, s: 0.6 + Math.random() * 0.7 });
+  for (var st = 0; st < 30; st++) stars.push({ x: Math.random(), y: Math.random() * 0.7, r: 0.6 + Math.random() * 1.2, p: Math.random() * 6 });
 
   function reset() {
     S = { phase: "intro", t: 0, y: GY - 30, vy: 0, dist: 0, speed: 0, spin: 0,
           obs: [], kernels: [], helmets: [], crows: [], trail: [], nextX: 0, lastC: 220, count: 0,
           got: 0, gates: 0, wait: 0, freeze: 0, crowAt: 20, shield: false, safe: 0,
-          bestWas: best, passedBest: false, newBest: false, unlocked: "", cause: "",
-          flash: 0, flashText: "", flashAt: 4, slot: { spins: [], t: 0, stage: -1 } };
+          bestWas: best, passedBest: false, newBest: false, unlocked: "", cause: "", kind: "",
+          taps: [], ySum: 0, bigSeen: 0, bigTaken: 0, typeLine: "", beat: false, dreamNem: "",
+          rw: 1, rewindFrom: 0, dreamAt: 0, dreaming: 0, kwave: 0,
+          combo: 0, slowT: 0, sq: 0, star: null, rainbow: 0, cow: null, todayBest: dayStats(0).best,
+          flash: 0, flashText: "", flashMask: ["", ""], flashX: 0, flashY: 0, flashAt: 4, slot: { spins: [], t: 0, stage: -1 } };
   }
 
   // ---------- sound: a few synthesized blips, no files ----------
@@ -112,14 +176,14 @@
   }
   var sfx = {
     kick: function () { tone(170, 0.22, "sine", 0.35, 45); thud(0.35); buzz(20); },
-    tap: function () { tone(300, 0.09, "sine", 0.1, 520); },
-    pass: function () { tone(740, 0.06, "square", 0.04); },
-    kernel: function (n) { var f = 900 + 70 * Math.min(n || 0, 12); tone(f, 0.1, "triangle", 0.1); tone(f * 1.34, 0.1, "triangle", 0.08, 0, 0.05); },
+    kernel: function (n) { tone(900 + 70 * Math.min(n || 0, 12), 0.09, "triangle", 0.05); },
+    note: function (n) { tone(NOTES[Math.min(n, NOTES.length) - 1] || NOTES[0], 0.14, "triangle", 0.07); },
+    moo: function () { tone(150, 0.55, "sawtooth", 0.035, 98); },
     power: function () { [660, 880, 1320].forEach(function (f, i) { tone(f, 0.14, "square", 0.07, 0, i * 0.06); }); },
     saved: function () { tone(220, 0.25, "square", 0.1, 660); thud(0.4); buzz(60); },
     gate: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.2, "triangle", 0.16, 0, i * 0.07); }); buzz(40); },
     mark: function () { tone(523, 0.12, "triangle", 0.14); tone(784, 0.18, "triangle", 0.14, 0, 0.1); },
-    hit: function () { tone(180, 0.35, "sawtooth", 0.14, 60); thud(0.5); buzz(120); },
+    hit: function () { tone(220, 0.3, "sine", 0.12, 110); thud(0.3); buzz(40); },
     over: function () { [392, 330, 262].forEach(function (f, i) { tone(f, 0.26, "triangle", 0.12, 0, i * 0.15); }); }
   };
 
@@ -163,6 +227,9 @@
 
   function start() {
     reset();
+    punts += 1;
+    // A dream punt: rare and never announced. For ten seconds everything gets out of the way.
+    if (punts > 3 && Math.random() < 0.04) S.dreamAt = 3 + Math.random() * 4;
     particles.length = 0; floaters.length = 0;
     S.phase = "play";
     S.vy = PUNT;
@@ -182,12 +249,15 @@
     if (S.phase === "intro" || (S.phase === "over" && S.wait > 0.25)) { start(); return; }
     if (S.phase !== "play") return;
     S.vy = TAP;
-    sfx.tap();
-    particles.push({ kind: "puff", x: BX - 6, y: S.y + 8, vx: -80, vy: 60, life: 0, max: 0.3, size: 4 });
+    S.sq = 1;
+    S.taps.push(S.t);
+    buzz(6);
   }
 
   function spawn() {
-    var t = S.t, n = ++S.count, x = S.nextX, step = Math.max(255, 335 - t * 1.6);
+    var t = S.t, n = ++S.count, x = S.nextX;
+    var step = S.speed * BEAT * (t < 12 ? 5 : t < 35 ? 4 : 3);   // five, then four, then three half-beats apart
+    if (n > 3 && !S.cow && Math.random() < 0.06) S.cow = { x: x - step * 0.5, mooed: false };
     var kind = n % 6 === 0 ? "gate" : (n > 2 && Math.random() < 0.3 ? "jump" : "gap");
     var o, cy;
     if (kind === "jump") {
@@ -209,9 +279,34 @@
     }
     if (n % 9 === 5) S.helmets.push({ x: x - step / 2, y: (S.lastC + cy) / 2, ph: Math.random() * 6 });
     else S.kernels.push({ x: x - step / 2, y: (S.lastC + cy) / 2, got: false, ph: Math.random() * 6 });
+    if (S.dreaming > 0) o.dream = true;
     S.obs.push(o);
     S.lastC = cy;
     S.nextX += step;
+  }
+
+  // every kernel goes into the ear in the corner; a full ear pops and pays, then starts again
+  function fillCob(n) {
+    cob += n;
+    if (cob >= COB) {
+      cob -= COB;
+      S.got += 50;
+      sfx.gate();
+      burst(VW - 30, 60, 40);
+      floaters.push({ text: "FULL EAR  +50", life: 0, color: GOLD });
+    }
+    save("rollcorn-hang-cob", cob);
+  }
+
+  function fireworks() {
+    var colors = [GOLD, "#FF6B5E", "#7FD4FF", "#FFFFFF"];
+    for (var f = 0; f < 3; f++) {
+      var fx = VW * (0.3 + f * 0.2), fy = 110 + Math.random() * 70, col = colors[f % colors.length];
+      for (var i = 0; i < 26; i++) {
+        var a = Math.PI * 2 * i / 26, v = 90 + Math.random() * 70;
+        particles.push({ kind: "fw", x: fx, y: fy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: -f * 0.22, max: 1.1, size: 2.6, col: col });
+      }
+    }
   }
 
   function hitRect(cx, cy, r, x, y, w, h) {
@@ -225,9 +320,9 @@
     S.wait = 0;
     S.freeze = 0.13;
     if (S.vy < 0) S.vy = 0;
-    shake = 12; flash = 1;
+    shake = 6; flash = 0.25;
     sfx.hit();
-    burst(BX, S.y, 10);
+    burst(BX, S.y, 6);
     label("Down", true);
   }
 
@@ -247,31 +342,107 @@
         if (r >= 0.65) { do { c = Math.floor(Math.random() * 5); } while (c === a || c === b); }
         var order = [[a, c, b], [a, b, c], [b, a, c]][Math.floor(Math.random() * 3)];
         sp.syms = all.charAt(order[0]) + all.charAt(order[1]) + all.charAt(order[2]);
-        if (r < 0.65) { sp.pay = 5; sp.text = "PAIR  +5"; } else sp.text = "NO LUCK";
+        if (r < 0.65) { sp.pay = 5; sp.text = "PAIR  +5"; } else sp.text = "NEXT TIME";
       }
       if (!sp.big) pot += 3;
       spins.push(sp);
     }
     return { spins: spins, t: 0, stage: -1 };
   }
-  function slotEnd() { return S.slot.spins.length * SPIN; }
+  // where the slots are at time t: which spin, how far into it, and when its last reel stops.
+  // When the first two reels match, the third takes longer to land. The result itself is never touched.
+  function slotAt(t) {
+    var spins = S.slot.spins, start = 0;
+    for (var i = 0; i < spins.length; i++) {
+      var tease = spins[i].syms.charAt(0) === spins[i].syms.charAt(1), dur = SPIN + (tease ? 0.7 : 0);
+      if (t < start + dur || i === spins.length - 1) {
+        return { idx: i, sp: spins[i], lt: Math.min(t - start, dur), last: 0.9 + (tease ? 0.7 : 0), tease: tease };
+      }
+      start += dur;
+    }
+    return null;
+  }
+  function slotEnd() {
+    var total = 0;
+    S.slot.spins.forEach(function (sp) { total += SPIN + (sp.syms.charAt(0) === sp.syms.charAt(1) ? 0.7 : 0); });
+    return total;
+  }
 
   function finish() {
     S.phase = "over";
     S.wait = 0;
+    S.rw = 0; S.rewindFrom = S.dist;
+    tone(240, 0.55, "sine", 0.045, 520);
     var before = earned;
     bank += S.got; earned += S.got;
     if (S.t > best) { best = S.t; S.newBest = true; save("rollcorn-hang-best", best.toFixed(2)); }
+    var today = dayStats(0), bestToday = S.t > today.best && today.count > 0;
+    save(dayKey(0), [(today.sum + S.t).toFixed(2), today.count + 1, Math.max(today.best, S.t).toFixed(2)].join(","));
     pot += S.got;
     S.slot = rollSlots((S.t >= 5 ? 1 : 0) + Math.min(2, S.gates));
     S.slot.spins.forEach(function (sp) { bank += sp.pay; earned += sp.pay; if (sp.helmet) freeHelmet = true; });
     save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned); save("rollcorn-hang-pot", pot);
     BALLS.forEach(function (b) { if (before < b.need && earned >= b.need) S.unlocked = b.name; });
-    if (S.newBest || S.unlocked) { sfx.gate(); burst(VW / 2, GY - 30, 50); } else sfx.over();
+    S.kind = S.newBest ? "Your best ever. Enjoy that one." :
+             bestToday ? "Your best punt today." :
+             lastT > 0 && S.t > lastT ? "Up from " + lastT.toFixed(2) + " last time. Nice." :
+             best > 0 && S.t >= best * 0.8 ? "So close to your best: just " + (best - S.t).toFixed(2) + " short." :
+             KIND[Math.floor(Math.random() * KIND.length)];
+    var personal = S.newBest || bestToday || (lastT > 0 && S.t > lastT);   // a line about this punt already said it
+    lastT = S.t;
+
+    // remember how this one was played
+    var gaps = [], mean = 0, dev = 0, i;
+    for (i = 1; i < S.taps.length; i++) gaps.push(S.taps[i] - S.taps[i - 1]);
+    gaps.forEach(function (g) { mean += g / gaps.length; });
+    gaps.forEach(function (g) { dev += (g - mean) * (g - mean) / gaps.length; });
+    var code = (CAUSES[S.cause] || { code: "-" }).code;
+    hist.push({ t: Math.round(S.t * 100) / 100, c: code, bs: S.bigSeen, bt: S.bigTaken, y: Math.round(S.ySum / Math.max(S.t, 0.1)),
+                cv: gaps.length >= 5 ? Math.round(Math.sqrt(dev) / mean * 100) / 100 : -1, k: Math.max(0, S.got) });
+    if (hist.length > 20) hist.shift();
+
+    // the nemesis: face it ten punts running and it is beaten
+    var last10 = hist.slice(-10);
+    if (nem) {
+      if (code === nem) {
+        nemFree = 0;
+        var times = last10.filter(function (h) { return h.c === nem; }).length, nm = causeOf(nem).name;
+        if (!personal) S.kind = nm.charAt(0).toUpperCase() + nm.slice(1) + " again: " + times + " of your last " + last10.length + ". You will get it.";
+      } else if (++nemFree >= 10) {
+        S.kind = "Ten punts and " + causeOf(nem).name + " never got you. Beaten.";
+        S.beat = true;
+        bank += 50; earned += 50;
+        hist.forEach(function (h) { if (h.c === nem) h.c = "-"; });
+        nem = ""; nemFree = 0;
+      }
+    }
+    if (!nem && last10.length >= 6) {
+      var tally = {}, worst = "", most = 3;
+      last10.forEach(function (h) { if (h.c !== "-") { tally[h.c] = (tally[h.c] || 0) + 1; if (tally[h.c] > most) { most = tally[h.c]; worst = h.c; } } });
+      if (worst) { nem = worst; nemFree = 0; }
+    }
+    // the type: say so when it changes
+    var nowType = readType();
+    if (nowType && nowType === ptype) typeWait = 0;
+    else if (nowType && (!ptype || ++typeWait >= 4)) {      // a new type has to show up four punts running before it sticks
+      S.typeLine = (ptype ? "You have become " : "You are ") + TYPES[nowType][0] + ". " + TYPES[nowType][1];
+      ptype = nowType; typeWait = 0;
+    }
+    save("rollcorn-hang-hist", JSON.stringify(hist)); save("rollcorn-hang-type", ptype);
+    save("rollcorn-hang-nem", nem); save("rollcorn-hang-nemfree", nemFree); save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned);
+
+    // today's mandala gets a petal
+    var petals = todayPetals();
+    petals.push([Math.round(S.t * 10) / 10, code]);
+    if (petals.length > 72) petals.shift();
+    save(mandalaKey(), JSON.stringify(petals));
+    drawMandala();
+
+    if (S.newBest || S.unlocked || S.beat) { sfx.gate(); burst(VW / 2, GY - 30, 50); if (S.beat) fireworks(); } else sfx.over();
     label("Punt again");
     shareBtn.hidden = false;
-    say(S.cause + ". Hang time " + S.t.toFixed(2) + " seconds. " + rank(S.t) + ". Kernels " + S.got + ". Best " + best.toFixed(2) + "." +
-        (S.unlocked ? " New ball: " + S.unlocked + "." : "") +
+    say(S.cause + ". Hang time " + S.t.toFixed(2) + " seconds. " + rank(S.t) + ". " + S.kind + " Kernels " + S.got + ". Best " + best.toFixed(2) + "." +
+        (S.unlocked ? " New ball: " + S.unlocked + "." : "") + (S.typeLine ? " " + S.typeLine : "") +
         (S.slot.spins.length ? " Kernel slots: " + S.slot.spins.map(function (sp) { return sp.text.toLowerCase().replace(/\s+/g, " "); }).join(", ") + "." : ""));
     board();
     buildBalls();
@@ -286,7 +457,49 @@
     bestEl.textContent = best.toFixed(2);
     kernEl.textContent = (bank + (S.phase === "over" ? 0 : S.got)).toLocaleString("en-US");
     potEl.textContent = pot.toLocaleString("en-US");
+    typeEl.textContent = ptype ? TYPES[ptype][0] : hist.length >= 10 ? TYPES.natural[0] : "In " + (10 - hist.length) + " punts";
+    nemEl.textContent = nem ? causeOf(nem).name.replace(/^the /, "The ") + " \u00B7 " + nemFree + "/10" : "None yet";
   }
+
+  // ---------- the mandala: one petal for every punt today, as long as the punt hung,
+  //            coloured by what brought it down
+  function mandalaKey() { return dayKey(0).replace("-day-", "-mandala-"); }
+  function todayPetals() { try { return JSON.parse(loadText(mandalaKey()) || "[]"); } catch (e) { return []; } }
+  function drawMandala() {
+    var m = mandala.getContext("2d"), petals = todayPetals(), n = Math.max(petals.length, 12), size = mandala.width, c = size / 2;
+    var bestT = 0, i;
+    petals.forEach(function (pt) { bestT = Math.max(bestT, pt[0]); });
+    m.clearRect(0, 0, size, size);
+    m.fillStyle = "#FBF8EC"; m.beginPath(); m.arc(c, c, c - 4, 0, Math.PI * 2); m.fill();
+    m.strokeStyle = "#E3E0D0"; m.lineWidth = 2;
+    [0.36, 0.62, 0.9].forEach(function (r) { m.beginPath(); m.arc(c, c, (c - 8) * r, 0, Math.PI * 2); m.stroke(); });
+    for (i = 0; i < petals.length; i++) {
+      var a = -Math.PI / 2 + i / n * Math.PI * 2, t = petals[i][0], cause = causeOf(petals[i][1]);
+      var len = (c - 12) * (0.28 + 0.7 * Math.min(1, Math.sqrt(t / Math.max(bestT, 8)))),   // measured against today's longest
+          wide = Math.max(7, Math.min(22, Math.PI * len / n * 1.5));
+      m.save();
+      m.translate(c, c); m.rotate(a);
+      m.fillStyle = cause ? cause.color : "#9A9685"; m.strokeStyle = "#000"; m.lineWidth = t === bestT ? 3 : 1.4; m.lineJoin = "round";
+      m.globalAlpha = 0.9;
+      m.beginPath();
+      m.moveTo(14, 0);
+      m.quadraticCurveTo(len * 0.55, -wide, len, 0);
+      m.quadraticCurveTo(len * 0.55, wide, 14, 0);
+      m.fill(); m.stroke();
+      if (t === bestT) { m.fillStyle = "#FFCD00"; m.globalAlpha = 1; m.beginPath(); m.arc(len, 0, 4.5, 0, Math.PI * 2); m.fill(); m.stroke(); }
+      m.restore();
+    }
+    m.fillStyle = "#FFCD00"; m.strokeStyle = "#000"; m.lineWidth = 2.5;
+    m.beginPath(); m.arc(c, c, 13, 0, Math.PI * 2); m.fill(); m.stroke();
+    mandalaNote.textContent = petals.length ? petals.length + (petals.length === 1 ? " punt" : " punts") + " today. Longest " + bestT.toFixed(1) + " seconds." : "Your first punt today starts it.";
+    saveBtn.hidden = !petals.length;
+  }
+  saveBtn.addEventListener("click", function () {
+    var a = document.createElement("a");
+    a.download = "hang-time-" + dayKey(0).replace("rollcorn-hang-day-", "") + ".png";
+    a.href = mandala.toDataURL("image/png");
+    a.click();
+  });
   function buildBalls() {
     ballsEl.textContent = "";
     BALLS.forEach(function (it) {
@@ -322,7 +535,7 @@
   });
   shareBtn.addEventListener("click", function () {
     var url = "https://rollcorn.com/hang-time.html";
-    var text = "I kept a punt in the air for " + S.t.toFixed(2) + " seconds on Hang Time. Beat it:";
+    var text = "I kept a punt in the air for " + S.t.toFixed(2) + " seconds on Hang Time" + (ptype ? ". They call me " + TYPES[ptype][0] : "") + ". Beat it:";
     function copied() { shareBtn.textContent = "Copied"; setTimeout(function () { shareBtn.textContent = "Share score"; }, 1600); }
     if (navigator.share) navigator.share({ text: text, url: url }).catch(function () {});
     else if (navigator.clipboard) navigator.clipboard.writeText(text + " " + url).then(copied, function () {});
@@ -351,11 +564,18 @@
     now += dt;
     shake = Math.max(0, shake - dt * 24);
     flash = Math.max(0, flash - dt * 5);
-    tod = lerp(tod, clamp(S.t / 22, 0, 2), Math.min(1, dt * 0.8));
+    tod = S.phase === "over" ? lerp(tod, 0, Math.min(1, dt * 2.5))      // the day comes back with the ball
+                             : lerp(tod, clamp(S.t / 22, 0, 2), Math.min(1, dt * 0.8));
     for (var j = particles.length - 1; j >= 0; j--) {
       var p = particles[j];
       p.life += dt;
-      p.vy += (p.kind === "kernel" ? 520 : p.kind === "dust" ? 120 : 0) * dt;
+      if (p.life < 0) continue;                           // fireworks go up one after another
+      p.vy += (p.kind === "kernel" ? 520 : p.kind === "dust" ? 120 : p.kind === "fw" ? 70 : 0) * dt;
+      if (p.kind === "fw") {
+        p.vx *= 1 - dt * 1.6; p.vy *= 1 - dt * 1.6; p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.life > p.max) particles.splice(j, 1);
+        continue;
+      }
       p.x += (p.vx - S.speed * 0.5) * dt; p.y += p.vy * dt;
       if (p.kind === "kernel" && p.y > GY + 20 && p.vy > 0) { p.y = GY + 20; p.vy *= -0.35; p.vx *= 0.6; }
       if (p.life > p.max) particles.splice(j, 1);
@@ -373,19 +593,25 @@
     if (S.phase === "intro") return;
     if (S.phase === "over") {
       S.wait += dt;
+      if (S.rw < 1) {
+        S.rw = Math.min(1, S.rw + dt / 0.95);
+        var back = 1 - Math.pow(1 - S.rw, 3);
+        S.dist = S.rewindFrom * (1 - back);
+        S.y = lerp(GY - 6, GY + TURF_H * 0.5 - 9, back) - Math.sin(Math.PI * back) * 130;
+        S.spin -= dt * 12;
+        if (S.rw >= 1) { S.spin = -0.5; S.sq = 1; tone(330, 0.08, "sine", 0.06); }
+      }
+      S.sq = Math.max(0, S.sq - dt * 6);
       var sl = S.slot;
       if (sl.spins.length && sl.t < slotEnd()) {
         sl.t += dt;
-        // a click as each reel stops, and a sound for the result
-        var idx = Math.min(sl.spins.length - 1, Math.floor(sl.t / SPIN)), lt = sl.t - idx * SPIN;
-        var stage = idx * 4 + (lt >= 1.0 ? 4 : lt >= 0.9 ? 3 : lt >= 0.65 ? 2 : lt >= 0.4 ? 1 : 0);
-        if (stage > sl.stage) {
+        var at = slotAt(sl.t), stage = at.idx * 2 + (at.lt >= at.last + 0.1 ? 1 : 0);
+        if (stage > sl.stage) {                           // a sound only when a spin pays
           sl.stage = stage;
-          if (stage % 4 === 0 && lt >= 1.0) {
-            var won = sl.spins[idx];
-            if (won.pay >= 25 || won.helmet) { sfx.gate(); burst(VW / 2, 380, won.big ? 90 : 30); shake = won.big ? 14 : 5; if (won.big) flash = 1; }
-            else if (won.pay) sfx.kernel(4); else tone(200, 0.15, "sine", 0.08, 120);
-          } else if (stage % 4) tone(520, 0.05, "square", 0.06);
+          if (stage % 2) {
+            if (at.sp.pay >= 25 || at.sp.helmet) { sfx.gate(); burst(VW / 2, 380, at.sp.big ? 90 : 30); shake = at.sp.big ? 14 : 5; if (at.sp.big) { flash = 1; fireworks(); } }
+            else if (at.sp.pay) sfx.kernel(4);
+          }
         }
       }
       return;
@@ -402,16 +628,44 @@
     }
 
     // in the air
+    var raw = dt;
+    if (S.slowT > 0) { S.slowT -= dt; dt *= 0.45; }     // time stretches while the ball threads a tight gap
     S.t += dt;
+    S.sq = Math.max(0, S.sq - raw * 6);
+    S.rainbow = Math.max(0, S.rainbow - raw);
+    if (!S.star && tod > 1.3 && Math.random() < raw / 9) S.star = { x: VW * (0.3 + Math.random() * 0.6), y: 30 + Math.random() * 90, life: 0 };
+    if (S.star) { S.star.life += raw; if (S.star.life > 0.9) S.star = null; }
+    if (S.cow) {
+      var cowX = S.cow.x - S.dist;
+      if (!S.cow.mooed && cowX < VW * 0.7) { S.cow.mooed = true; sfx.moo(); }
+      if (cowX < -80) S.cow = null;
+    }
     S.safe = Math.max(0, S.safe - dt);
+    S.ySum += S.y * dt;
+    if (S.dreamAt && S.dreaming <= 0 && S.t >= S.dreamAt) {
+      S.dreamAt = 0;
+      S.dreaming = 10;
+      S.dreamNem = nem;
+      if (nem !== "W") S.crows = [];
+      for (var d = 0; d < S.obs.length; d++) S.obs[d].dream = true;
+      [262, 330, 392, 523].forEach(function (f, n) { tone(f, 2.4, "sine", 0.035, 0, n * 0.12); });   // a soft chord, and nothing said
+    }
+    if (S.dreaming > 0) {
+      S.dreaming -= raw;
+      S.safe = Math.max(S.safe, S.dreaming > 0 ? 0.3 : 1.2);   // nothing can touch the ball, and a moment of grace after
+      S.crowAt = Math.max(S.crowAt, S.t + 3);
+      if (S.dreamNem === "W" && S.dreaming > 1 && Math.random() < raw * 1.3) S.crows.push({ x: S.dist + VW + 60, y: 70 + Math.random() * (GY - 200), ph: Math.random() * 6 });
+      S.kwave -= S.speed * dt;
+      if (S.kwave <= 0) { S.kwave = 70; S.kernels.push({ x: S.dist + VW + 30, y: 210 + Math.sin(S.t * 1.6) * 70, got: false, ph: 0 }); }
+    }
     S.speed = 210 + Math.min(150, S.t * 3.2);
     S.dist += S.speed * dt;
-    S.vy = Math.min(S.vy + GRAV * dt, 640);
+    S.vy = Math.min(S.vy + GRAV * (S.dreaming > 0 ? 0.45 : 1) * dt, S.dreaming > 0 ? 300 : 640);   // in a dream the ball floats
     S.y += S.vy * dt;
     S.spin += dt * 9;
     if (S.y < R + 2) { S.y = R + 2; S.vy = Math.max(S.vy, 0); }
     S.trail.push({ x: S.dist, y: S.y });
-    if (S.trail.length > 14) S.trail.shift();
+    if (S.trail.length > 8) S.trail.shift();
     scoreEl.textContent = S.t.toFixed(2);
 
     if (S.nextX - S.dist < VW + 120) spawn();
@@ -420,6 +674,13 @@
     for (i = S.obs.length - 1; i >= 0; i--) {
       var o = S.obs[i];
       if (o.x + o.w - S.dist < -120) { S.obs.splice(i, 1); continue; }
+      if (o.dream) {                                    // the clouds lift and the corn bows out of the way,
+        var keepTop = S.dreamNem === "S", keepBot = S.dreamNem === "C" && o.kind === "gap";   // except the nemesis, which stays as a ghost
+        o.amp = 0;
+        if (!keepTop) o.top += (-80 - o.top) * Math.min(1, raw * 2.6);
+        if (!keepBot) o.bot += (GY + 16 - o.bot) * Math.min(1, raw * 2.6);
+        if (o.kind === "jump" && S.dreamNem !== "R") o.st = 2;
+      }
       if (o.amp) { var slide = o.amp * Math.sin(now * o.sp + o.ph); o.top = o.top0 + slide; o.bot = o.bot0 + slide; }
       if (o.kind === "jump") {
         // he leaves his feet so that the top of the jump meets the ball
@@ -433,6 +694,10 @@
         if (hitRect(bx, by, R - 2, o.x, -40, o.w, o.top + 40)) hit = o.kind === "gate" ? "Hit the post" : "Lost in the storm";
         if (hitRect(bx, by, R - 2, o.x, o.bot, o.w, GY - o.bot + 40)) hit = o.kind === "gate" ? "Hit the post" : "Into the corn";
       }
+      if (bx > o.x - R && bx < o.x + o.w + R) {
+        var room = Math.min(by - o.top, (o.kind === "jump" ? GY - o.jy - 74 : o.bot) - by) - R;
+        if (room > 0 && room < 13 && (o.slow || 0) < 0.3) { o.slow = (o.slow || 0) + raw; S.slowT = 0.05; }
+      }
       if (!o.passed && bx > o.x + o.w + R) {
         o.passed = true;
         if (o.kind === "gate") {
@@ -440,17 +705,22 @@
           sfx.gate(); shake = 6;
           burst(BX, S.y, 24);
           floaters.push({ text: "COFFIN CORNer  +5", life: 0, color: GOLD });
+          fillCob(5);
           kernEl.textContent = (bank + S.got).toLocaleString("en-US");
-        } else sfx.pass();
+        } else if (tod < 0.8 && S.rainbow <= 0 && Math.random() < 0.07) S.rainbow = 4;   // once in a while, a rainbow after the storm
       }
     }
     for (i = S.kernels.length - 1; i >= 0; i--) {
       var kn = S.kernels[i];
-      if (kn.x - S.dist < -40) { S.kernels.splice(i, 1); continue; }
+      if (kn.x - S.dist < -40) { if (!kn.got) { S.combo = 0; if (kn.big) S.bigSeen += 1; } S.kernels.splice(i, 1); continue; }
       if (!kn.got && (kn.x - bx) * (kn.x - bx) + (kn.y - by) * (kn.y - by) < 24 * 24) {
         kn.got = true; S.got += kn.big ? 5 : 1;
-        sfx.kernel(kn.big ? 8 : 0);
-        burst(BX, kn.y, kn.big ? 10 : 3);
+        if (kn.big) { S.bigSeen += 1; S.bigTaken += 1; }
+        S.combo += 1;
+        sfx.note(S.combo);
+        buzz(8);
+        if (kn.big) burst(BX, kn.y, 6);
+        fillCob(kn.big ? 5 : 1);
         kernEl.textContent = (bank + S.got).toLocaleString("en-US");
       }
     }
@@ -463,7 +733,7 @@
         sfx.power();
       }
     }
-    if (S.t > S.crowAt) {                               // later on, crows come the other way
+    if (S.t > S.crowAt && S.dreaming <= 0) {                           // later on, crows come the other way
       S.crowAt = S.t + 3.5 + Math.random() * 3.5;
       S.crows.push({ x: S.dist + VW + 320, y: 70 + Math.random() * (GY - 200), ph: Math.random() * 6 });
     }
@@ -477,11 +747,19 @@
     if (S.t > S.flashAt) {
       S.flashAt = S.t + 6 + Math.random() * 4;
       S.flashText = FLASHES[Math.floor(Math.random() * FLASHES.length)];
-      S.flash = 2;                                       // frames
+      S.flash = 3;                                       // one frame of the word, then two of the mask
+      S.flashX = VW * (0.3 + Math.random() * 0.4);       // never the same spot twice, so there is nowhere to stare
+      S.flashY = 130 + Math.random() * 130;
+      S.flashMask = ["", ""];
+      for (var mc = 0; mc < S.flashText.length; mc++) {
+        S.flashMask[0] += "XKWMHNZRVB".charAt(Math.floor(Math.random() * 10));
+        S.flashMask[1] += "MWKXNHBZRV".charAt(Math.floor(Math.random() * 10));
+      }
     }
     if (!S.passedBest && S.bestWas > 2 && S.t > S.bestWas) {
       S.passedBest = true;
       sfx.gate(); burst(BX, S.y, 30); shake = 6;
+      fireworks();
       floaters.push({ text: "NEW BEST!", life: 0, color: GOLD });
     }
     if (S.y > GY - 6) { S.y = GY - 6; hit = "Downed"; }
@@ -727,14 +1005,6 @@
     }
     if (tod < 1.35) {                                   // the sun, with slow rays, sinking as the punt goes on
       var sx = VW * 0.72, sy = lerp(235, GY + 14, clamp(tod, 0, 1.15)), fade = clamp(1.35 - tod, 0, 1);
-      ctx.save();
-      ctx.translate(sx, sy); ctx.rotate(now * 0.05);
-      ctx.fillStyle = "rgba(255,245,200," + (0.07 * fade).toFixed(3) + ")";
-      for (i = 0; i < 12; i++) {
-        ctx.rotate(Math.PI / 6);
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-34, -460); ctx.lineTo(34, -460); ctx.closePath(); ctx.fill();
-      }
-      ctx.restore();
       var bloom = ctx.createRadialGradient(sx, sy, 6, sx, sy, 190);
       bloom.addColorStop(0, a > 0.5 ? "rgba(255,196,120," + fade + ")" : "rgba(255,246,190," + fade + ")");
       bloom.addColorStop(0.35, "rgba(255,220,150," + (0.35 * fade).toFixed(2) + ")");
@@ -749,23 +1019,7 @@
     var cu = mix3(mix("#CFE2F1", "#E8957A", a), "#7E5796", "#1A2046", b);
     for (i = 0; i < clouds.length; i++) puffCloud(clouds[i].x, clouds[i].y, clouds[i].s, cc, cu);
 
-    // two ranges of hills, a water tower and a windmill between them, then the barn
-    hills(S.dist * 0.05, 46, 16, mix3(mix("#B5DCB0", "#C98F86", a), "#6F5687", "#16233F", b));
-    var wt = ((900 - S.dist * 0.08) % 1500 + 1500) % 1500 - 100, wy = GY - 44;
-    var ink = mix3(mix("#6E8F7A", "#8A5B62", a), "#4A3A66", "#0E1830", b);
-    ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 2.2; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(wt - 10, wy); ctx.lineTo(wt - 6, wy - 44); ctx.moveTo(wt + 10, wy); ctx.lineTo(wt + 6, wy - 44); ctx.moveTo(wt, wy); ctx.lineTo(wt, wy - 44);
-    ctx.moveTo(wt - 8, wy - 20); ctx.lineTo(wt + 8, wy - 20); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(wt, wy - 54, 17, 13, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(wt - 12, wy - 64); ctx.lineTo(wt, wy - 74); ctx.lineTo(wt + 12, wy - 64); ctx.fill();
-    ctx.fillStyle = GOLD; ctx.globalAlpha = 0.85; ctx.fillRect(wt - 16.5, wy - 57, 33, 5); ctx.globalAlpha = 1;
-    var wm = ((300 - S.dist * 0.08) % 1500 + 1500) % 1500 - 100;
-    ctx.strokeStyle = ink; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(wm - 7, wy); ctx.lineTo(wm, wy - 56); ctx.lineTo(wm + 7, wy); ctx.moveTo(wm - 4, wy - 22); ctx.lineTo(wm + 4, wy - 22); ctx.stroke();
-    ctx.save(); ctx.translate(wm, wy - 56); ctx.rotate(now * 1.2);
-    ctx.fillStyle = ink;
-    for (i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-3, -16); ctx.lineTo(3, -16); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
+    // one range of hills, then the barn
     hills(S.dist * 0.12 + 300, 26, 13, mix3(mix("#86C37A", "#7E9A5E", a), "#3F5A63", "#102A2A", b));
 
     var bx = ((520 - S.dist * 0.2) % 1300 + 1300) % 1300 - 120, by = GY - 16, u = 1.7;
@@ -810,17 +1064,16 @@
     ctx.lineTo(VW + 20, GY + 1); ctx.fill();
     if (!tassel) return;
     ctx.fillStyle = GOLD;
-    for (var gi = Math.floor(off / 19), gx = -(off % 19); gx < VW + 20; gx += 19, gi++) {
+    for (var gi = Math.floor(off / 46), gx = -(off % 46); gx < VW + 20; gx += 46, gi++) {
       ctx.beginPath(); ctx.ellipse(gx, GY - top * 0.45 + (gi % 3) * 2.5, 1.8, 3.8, 0.3, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   function field() {
-    // two rows of corn along the far sideline
-    cornRow(S.dist * 0.45, 31, 9, "#2E8B47", false);
+    // a row of corn along the far sideline
     cornRow(S.dist * 0.62, 22, 7, HUSK, true);
 
-    // the field scrolls by: mown stripes, hash marks, yard lines, numbers, and the end zone the punt left from
+    // the field scrolls by: mown stripes, yard lines, numbers, and the end zone the punt left from
     var goal = BX - 40, five = YARD * 5;
     var first = Math.floor((S.dist - goal) / five) - 1;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -831,18 +1084,10 @@
       if (k < 0) continue;
       ctx.fillStyle = "rgba(255,255,255,.92)";
       ctx.fillRect(x - 1.2, GY, 2.4, TURF_H);
-      ctx.fillStyle = "rgba(255,255,255,.7)";
-      for (var hk = 1; hk < 5; hk++) {
-        ctx.fillRect(x + hk * YARD - 0.6, GY + 6, 1.2, 6);
-        ctx.fillRect(x + hk * YARD - 0.6, GY + TURF_H - 14, 1.2, 6);
-      }
       var yd = (k * 5) % 100;
       if (k > 0 && yd === 0) {
         ctx.fillStyle = GOLD; ctx.font = "700 16px " + DISPLAY;
         ctx.fillText("ROLL CORN", x, GY + TURF_H * 0.55);
-      } else if (yd === 75) {
-        ctx.fillStyle = "rgba(255,255,255,.42)"; ctx.font = "700 11px " + LABEL;
-        ctx.fillText(CHEERS[Math.floor(k / 20) % CHEERS.length].toUpperCase(), x, GY + TURF_H * 0.87);
       } else if (k % 2 === 0 && k > 0) {
         ctx.fillStyle = "rgba(255,255,255,.88)"; ctx.font = "700 22px " + DISPLAY;
         ctx.fillText(String(yd <= 50 ? yd : 100 - yd), x - 18, GY + TURF_H * 0.55);
@@ -870,7 +1115,7 @@
 
   // a thunderhead hanging down from the top of the sky
   function storm(x, w, top) {
-    var on = Math.sin(now * 5 + x * 0.7) > 0.55, y;
+    var on = false, y;
     var g = ctx.createLinearGradient(0, Math.max(-30, top - 170), 0, top);
     g.addColorStop(0, on ? "#7B8498" : "#666F82"); g.addColorStop(1, on ? "#3C4354" : "#2A303D");
     ctx.fillStyle = g; ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.lineJoin = "round";
@@ -885,12 +1130,6 @@
     for (y = -34; y < top - 46; y += 34) rises.push(y);
     for (var i = rises.length - 1; i >= 0; i--) ctx.arc(x + w - 4, rises[i] + 17, 17, Math.PI / 2, -Math.PI / 2, true);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    // lighter billows inside
-    ctx.strokeStyle = "rgba(255,255,255,.13)"; ctx.lineWidth = 3; ctx.lineCap = "round";
-    for (y = top - 58; y > -20; y -= 40) {
-      ctx.beginPath(); ctx.arc(x + w * 0.36, y, 15, Math.PI * 1.05, Math.PI * 1.75); ctx.stroke();
-      ctx.beginPath(); ctx.arc(x + w * 0.7, y + 18, 12, Math.PI * 1.1, Math.PI * 1.8); ctx.stroke();
-    }
     ctx.fillStyle = "rgba(0,0,0,.20)";
     ctx.beginPath(); ctx.ellipse(x + w / 2, top - 6, w * 0.5, 7, 0, 0, Math.PI * 2); ctx.fill();
     if (top > 64) {
@@ -900,7 +1139,7 @@
         flashGlow.addColorStop(0, "rgba(255,236,140,.55)"); flashGlow.addColorStop(1, "rgba(255,236,140,0)");
         ctx.fillStyle = flashGlow; ctx.fillRect(lx - 46, ly - 32, 92, 92);
       }
-      ctx.fillStyle = on ? "#FFE45C" : "#9A8F5A"; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+      ctx.fillStyle = "#FFD84A"; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(lx + 3, ly); ctx.lineTo(lx - 8, ly + 17); ctx.lineTo(lx - 1, ly + 17); ctx.lineTo(lx - 6, ly + 32);
       ctx.lineTo(lx + 9, ly + 12); ctx.lineTo(lx + 2, ly + 12); ctx.lineTo(lx + 9, ly); ctx.closePath();
@@ -941,18 +1180,17 @@
     for (var sx = x + 12, n = 0; sx < x + w - 4; sx += 21, n++) {
       ctx.beginPath(); ctx.moveTo(sx, base - 2); ctx.lineTo(sx, bot + 18); ctx.stroke();
     }
-    for (var ly = bot + 40, row = 0; ly < base - 8; ly += 28, row++) {
+    for (var ly = bot + 40, row = 0; ly < base - 8; ly += 44, row++) {
       leaf(x + 12, ly, -1, 20, row % 2 ? "#3FA34D" : "#57B865");
       leaf(x + w - 10, ly + 12, 1, 20, row % 2 ? "#2F8F41" : "#3FA34D");
-      leaf(x + 33, ly + 6, row % 2 ? 1 : -1, 15, "#4DB05C");
     }
-    for (var ey = bot + 52, e = 0; ey < base - 4; ey += 46, e++) cornEar(x + (e % 2 ? w * 0.7 : w * 0.3), ey, 21);
+    for (var ey = bot + 52, e = 0; ey < base - 4; ey += 74, e++) cornEar(x + (e % 2 ? w * 0.7 : w * 0.3), ey, 21);
     ctx.fillStyle = "rgba(255,255,255,.10)";
     ctx.fillRect(x + 2, bot + 16, 5, base - bot - 18);
   }
 
   function gate(o, x) {
-    ctx.fillStyle = "rgba(255,225,90," + (0.25 + 0.12 * Math.sin(now * 6)).toFixed(2) + ")";
+    ctx.fillStyle = "rgba(255,225,90,.2)";
     ctx.fillRect(x - 6, o.top, o.w + 12, o.bot - o.top);
     ctx.fillStyle = GOLD; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
     rr(x, -30, o.w, o.top + 30, 6); ctx.fill(); ctx.stroke();
@@ -1030,21 +1268,23 @@
   function slotPanel() {
     var sl = S.slot, n = sl.spins.length;
     if (!n) return;
-    var done = sl.t >= slotEnd(), idx = Math.min(n - 1, Math.floor(sl.t / SPIN)), lt = done ? SPIN : sl.t - idx * SPIN, sp = sl.spins[idx];
-    var w = 252, h = 96, x = VW / 2 - w / 2, y = 350, shown = lt >= 1.0, win = shown && (sp.pay || sp.helmet);
+    var at = slotAt(Math.min(sl.t, slotEnd())), sp = at.sp, lt = at.lt;
+    var w = 252, h = 96, x = VW / 2 - w / 2, y = 350, shown = lt >= at.last + 0.1, win = shown && (sp.pay || sp.helmet);
     ctx.fillStyle = "rgba(0,0,0,.3)"; rr(x + 5, y + 6, w, h, 12); ctx.fill();
     ctx.fillStyle = "#111"; ctx.strokeStyle = win && Math.sin(now * 18) > 0 ? "#fff" : GOLD; ctx.lineWidth = 4;
     rr(x, y, w, h, 12); ctx.fill(); ctx.stroke();
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (var i = 0; i < 3; i++) {
-      var cx = VW / 2 + (i - 1) * 70, stopped = lt >= 0.4 + i * 0.25;
-      ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+      var cx = VW / 2 + (i - 1) * 70, stopAt = i === 2 ? at.last : 0.4 + i * 0.25, stopped = lt >= stopAt;
+      var waiting = i === 2 && at.tease && !stopped && lt >= 0.65;   // two the same: all eyes on the last reel
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = waiting ? GOLD : INK; ctx.lineWidth = waiting ? 4 : 2.5;
       rr(cx - 30, y + 12, 60, 46, 7); ctx.fill(); ctx.stroke();
       ctx.save();
       ctx.beginPath(); ctx.rect(cx - 28, y + 14, 56, 42); ctx.clip();
       if (stopped) drawSym(sp.syms.charAt(i), cx, y + 35);
       else {
-        var roll = now * 13 + i * 1.7, k = Math.floor(roll), off = (roll - k) * 46;
+        var slow = waiting ? 1 - 0.65 * clamp((lt - 0.65) / (at.last - 0.65), 0, 1) : 1;   // the last reel winds down
+        var roll = now * 13 * slow + i * 1.7, k = Math.floor(roll), off = (roll - k) * 46;
         drawSym("KFPHC".charAt(k % 5), cx, y + 35 + off);
         drawSym("KFPHC".charAt((k + 1) % 5), cx, y + 35 + off - 46);
       }
@@ -1065,7 +1305,19 @@
     ctx.font = "700 44px " + DISPLAY;
     ctx.fillText(S.t.toFixed(2), VW / 2, 12);
     ctx.font = "700 13px " + LABEL;
-    ctx.fillText(hot ? "NEW BEST" : best > 0 ? "BEST " + best.toFixed(2) : "HANG TIME", VW / 2, 62);
+    ctx.fillText(hot ? "NEW BEST" : best > 0 ? "BEST " + best.toFixed(2) + (S.todayBest > 0 && S.todayBest < best ? "  \u00B7  TODAY " + S.todayBest.toFixed(2) : "") : "HANG TIME", VW / 2, 62, cw - 12);
+
+    // the ear being filled, kernel by kernel, across punts
+    var ex = VW - 40, ey = 10, cols = 4, rows = COB / cols;
+    ctx.fillStyle = "#3FA34D"; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex - 5, ey + 34); ctx.quadraticCurveTo(ex - 6, ey + 70, ex + 14, ey + 72); ctx.quadraticCurveTo(ex + 34, ey + 70, ex + 33, ey + 34); ctx.quadraticCurveTo(ex + 14, ey + 62, ex - 5, ey + 34); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#F6EFD3";
+    rr(ex, ey, 28, 62, 13); ctx.fill(); ctx.stroke();
+    for (var ci = 0; ci < COB; ci++) {
+      var cr = rows - 1 - Math.floor(ci / cols), cc = ci % cols;
+      ctx.fillStyle = ci < cob ? GOLD : "rgba(0,0,0,.10)";
+      rr(ex + 3.5 + cc * 5.5, ey + 5 + cr * 5.3, 4.4, 4.2, 1.6); ctx.fill();
+    }
 
     ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.lineWidth = 2;
     rr(8, 8, 74, 34, 7); ctx.fill(); ctx.stroke();
@@ -1079,14 +1331,49 @@
     ctx.save();
     if (shake > 0.2) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     sky();
+    if (S.rainbow > 0) {
+      var ra = clamp(Math.min(S.rainbow, 4 - S.rainbow) / 0.8, 0, 1) * 0.5, bands = ["#FF5E5E", "#FFA940", "#FFE14D", "#6FD46F", "#5EA8FF", "#9B7BFF"];
+      ctx.lineWidth = 7; ctx.globalAlpha = ra;
+      for (var rb = 0; rb < bands.length; rb++) {
+        ctx.strokeStyle = bands[rb];
+        ctx.beginPath(); ctx.arc(VW * 0.52, GY + 30, 300 - rb * 7, Math.PI, 0); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (S.star) {
+      var sa = clamp(Math.min(S.star.life / 0.15, (0.9 - S.star.life) / 0.4), 0, 1), sx0 = S.star.x - S.star.life * 220, sy0 = S.star.y + S.star.life * 90;
+      var tail = ctx.createLinearGradient(sx0, sy0, sx0 + 70, sy0 - 28);
+      tail.addColorStop(0, "rgba(255,255,255," + sa.toFixed(2) + ")"); tail.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.strokeStyle = tail; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(sx0 + 70, sy0 - 28); ctx.stroke();
+    }
     field();
+    if (S.cow) {                                          // once in a long while, a cow by the far sideline
+      var cwx = S.cow.x - S.dist, cwy = GY - 3;
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(cwx - 12, cwy - 10); ctx.lineTo(cwx - 12, cwy); ctx.moveTo(cwx - 5, cwy - 10); ctx.lineTo(cwx - 5, cwy); ctx.moveTo(cwx + 7, cwy - 10); ctx.lineTo(cwx + 7, cwy); ctx.moveTo(cwx + 13, cwy - 10); ctx.lineTo(cwx + 13, cwy); ctx.stroke();
+      ctx.fillStyle = "#fff";
+      rr(cwx - 16, cwy - 24, 33, 16, 6); ctx.fill(); ctx.stroke();
+      rr(cwx - 27, cwy - 30, 14, 12, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.ellipse(cwx - 3, cwy - 18, 5, 4, 0.4, 0, Math.PI * 2); ctx.ellipse(cwx + 10, cwy - 15, 4, 3, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cwx - 23, cwy - 26, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#F4A6B8"; rr(cwx - 28, cwy - 23, 6, 5, 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cwx + 17, cwy - 22); ctx.quadraticCurveTo(cwx + 23, cwy - 18, cwx + 20, cwy - 11); ctx.stroke();
+    }
     var i, x;
 
-    if (S.flash > 0 && S.phase === "play") {            // two frames, soft, behind everything else
+    if (S.flash > 0 && S.phase === "play") {            // soft, and behind everything else
+      ctx.font = "700 " + Math.min(30, VW * 0.065) + "px " + DISPLAY; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      if (S.flash === 3) {
+        ctx.fillStyle = "rgba(255,255,255,.28)";
+        ctx.fillText(S.flashText.toUpperCase(), S.flashX, S.flashY, VW * 0.55);
+      } else {
+        ctx.fillStyle = "rgba(255,255,255,.17)";
+        ctx.fillText(S.flashMask[0], S.flashX, S.flashY, VW * 0.55);
+        ctx.fillText(S.flashMask[1], S.flashX + 4, S.flashY + 2, VW * 0.55);
+      }
       S.flash -= 1;
-      ctx.fillStyle = "rgba(255,255,255,.5)";
-      ctx.font = "700 " + Math.min(40, VW * 0.085) + "px " + DISPLAY; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(S.flashText.toUpperCase(), VW / 2, 200, VW - 40);
     }
     if (S.phase === "play" && S.bestWas > 2 && !S.passedBest) {      // the line to beat
       var bxLine = distAt(S.bestWas) + BX - S.dist;
@@ -1105,9 +1392,12 @@
       x = o.x - S.dist;
       if (o.kind === "gate") gate(o, x);
       else {
-        storm(x, o.w, o.top);
-        if (o.kind === "gap") cornWall(x, o.w, o.bot);
+        var ghost = o.dream && S.dreaming > 0;                 // in a dream the nemesis is pale and harmless
+        if (ghost) ctx.globalAlpha = 0.38;
+        if (o.top > 6) storm(x, o.w, o.top);
+        if (o.kind === "gap") { if (o.bot < GY - 6) cornWall(x, o.w, o.bot); }
         else player(x + o.w / 2, GY - o.jy + (o.jy > 0 ? 0 : TURF_H * 0.5), kit(AWAY, { up: o.st === 1, air: o.jy > 0 }));
+        ctx.globalAlpha = 1;
       }
     }
     for (i = 0; i < S.kernels.length; i++) {
@@ -1115,7 +1405,7 @@
       if (kn.got) continue;
       var kx = kn.x - S.dist, ky = kn.y + Math.sin(now * 3 + kn.ph) * 3;
       ctx.save(); ctx.translate(kx, ky); ctx.rotate(Math.sin(now * 2 + kn.ph) * 0.3);
-      if (kn.big) { var bs = 1.7 + 0.15 * Math.sin(now * 8); ctx.scale(bs, bs); }
+      if (kn.big) ctx.scale(1.7, 1.7);
       kernel(1.05);
       ctx.restore();
     }
@@ -1132,7 +1422,7 @@
         ctx.fillStyle = RED; ctx.strokeStyle = INK; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(VW - 8, cr.y); ctx.lineTo(VW - 26, cr.y - 12); ctx.lineTo(VW - 26, cr.y + 12); ctx.closePath();
         if (Math.sin(now * 14) > 0) { ctx.fill(); ctx.stroke(); }
-      } else crow(x, cr.y);
+      } else { if (S.dreaming > 0) ctx.globalAlpha = 0.38; crow(x, cr.y); ctx.globalAlpha = 1; }
     }
 
     // the punter, left behind once the ball is away
@@ -1144,8 +1434,8 @@
       ctx.lineCap = "round";
       for (i = 1; i < S.trail.length; i++) {
         var tt = i / S.trail.length;
-        ctx.strokeStyle = "rgba(255,255,255," + (tt * 0.75).toFixed(2) + ")";
-        ctx.lineWidth = 1 + tt * 9;
+        ctx.strokeStyle = "rgba(255,255,255," + (tt * 0.5).toFixed(2) + ")";
+        ctx.lineWidth = 1 + tt * 6;
         ctx.beginPath();
         ctx.moveTo(S.trail[i - 1].x - S.dist + BX, S.trail[i - 1].y); ctx.lineTo(S.trail[i].x - S.dist + BX, S.trail[i].y);
         ctx.stroke();
@@ -1155,7 +1445,13 @@
     ctx.fillStyle = "rgba(0,0,0,.25)";
     ctx.beginPath(); ctx.ellipse(BX, feet + 3, 12 * sh, 3.4 * sh, 0, 0, Math.PI * 2); ctx.fill();
     if (S.phase === "intro") drawBall(BX, feet - 9, -0.5);
-    else if (S.safe <= 0 || Math.sin(now * 40) > 0) drawBall(BX, S.y, S.phase === "over" ? 0.3 : S.spin + clamp(S.vy / 700, -0.6, 0.9));
+    else if (S.safe <= 0 || Math.sin(now * 40) > 0) {
+      var fall = S.phase === "play" ? clamp(S.vy / 640, 0, 1) * 0.14 : 0;   // flat on the tap, long on the way down
+      ctx.save();
+      ctx.translate(BX, S.y); ctx.scale(1 + S.sq * 0.28 - fall * 0.5, 1 - S.sq * 0.24 + fall);
+      drawBall(0, 0, S.phase === "over" ? S.spin : S.spin + clamp(S.vy / 700, -0.6, 0.9));
+      ctx.restore();
+    }
     if (S.shield && S.phase === "play") {                // the helmet: a gold shell around the ball
       ctx.strokeStyle = INK; ctx.lineWidth = 5;
       ctx.beginPath(); ctx.arc(BX, S.y, 17, Math.PI * 0.85, Math.PI * 2.15); ctx.stroke();
@@ -1166,7 +1462,12 @@
     // popcorn and dust
     for (i = 0; i < particles.length; i++) {
       var pt = particles[i], fade = 1 - pt.life / pt.max;
-      if (pt.kind === "dust" || pt.kind === "puff") {
+      if (pt.life < 0) continue;
+      if (pt.kind === "fw") {
+        ctx.fillStyle = pt.col; ctx.globalAlpha = clamp(fade * 1.6, 0, 1);
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, Math.max(0.1, pt.size * (0.6 + fade * 0.6)), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (pt.kind === "dust" || pt.kind === "puff") {
         ctx.fillStyle = "rgba(255,252,235," + (fade * 0.8).toFixed(2) + ")";
         ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size * (1.4 - fade * 0.4), 0, Math.PI * 2); ctx.fill();
       } else if (pt.life < pt.pop) {
@@ -1201,6 +1502,12 @@
     // evening light over the whole scene, and darker corners
     var eve = clamp(tod, 0, 1) * (1 - clamp(tod - 1, 0, 1)), night = clamp(tod - 1, 0, 1);
     if (eve > 0.01) { ctx.fillStyle = "rgba(255,120,60," + (eve * 0.08).toFixed(3) + ")"; ctx.fillRect(0, 0, VW, VH); }
+    if (S.dreaming > 0 && S.phase === "play") {          // a soft glow while it lasts
+      var dg = clamp(Math.min(10 - S.dreaming, S.dreaming) / 1.2, 0, 1) * 0.16;
+      var glow = ctx.createRadialGradient(VW / 2, VH * 0.4, 20, VW / 2, VH * 0.4, Math.max(VW, VH) * 0.7);
+      glow.addColorStop(0, "rgba(255,244,214," + dg.toFixed(3) + ")"); glow.addColorStop(1, "rgba(255,190,220," + (dg * 0.8).toFixed(3) + ")");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, VW, VH);
+    }
     if (night > 0.01) { ctx.fillStyle = "rgba(10,14,60," + (night * 0.30).toFixed(3) + ")"; ctx.fillRect(0, 0, VW, VH); }
     var vig = ctx.createRadialGradient(VW / 2, VH * 0.48, VH * 0.5, VW / 2, VH * 0.48, Math.max(VW, VH) * 0.78);
     vig.addColorStop(0, "rgba(0,0,0,0)"); vig.addColorStop(1, "rgba(0,0,0,.30)");
@@ -1208,13 +1515,15 @@
     if (flash > 0.01) { ctx.fillStyle = "rgba(255,255,255," + (flash * 0.6).toFixed(2) + ")"; ctx.fillRect(0, 0, VW, VH); }
 
     if (S.phase === "intro") {
-      sign(["Hang Time", "Keep the punt in the air.", best > 0 ? "Best " + best.toFixed(2) + "  ·  Tap to punt" : "Tap to punt"], 190, "gold");
+      var d0 = dayStats(0), d1 = dayStats(1), up = d0.count > 2 && d1.count > 2 && d0.sum / d0.count > d1.sum / d1.count;
+      sign(["Hang Time", up ? "Your average is up from yesterday." : ptype ? "You are " + TYPES[ptype][0] + "." : "Keep the punt in the air.", best > 0 ? "Best " + best.toFixed(2) + "  ·  Tap to punt" : "Tap to punt"], 190, "gold");
       return;
     }
     hud();
     if (S.phase === "over") {
       var lines = [(S.newBest ? "New best: " : "Hang time ") + S.t.toFixed(2), S.cause + "  ·  " + rank(S.t)];
-      if (!S.newBest && best > 0 && S.t >= best * 0.8) lines.push("So close: " + (best - S.t).toFixed(2) + " short of your best");
+      lines.push(S.kind);
+      if (S.typeLine) lines.push(S.typeLine);
       if (S.unlocked) lines.push("New ball: " + S.unlocked);
       lines.push("Tap to punt again");
       sign(lines, S.slot.spins.length ? 225 : 240, S.newBest ? "gold" : "dark", S.wait);
@@ -1226,14 +1535,15 @@
   function frame(ts) {
     var dt = Math.min(0.034, (ts - last) / 1000 || 0);
     last = ts;
+    requestAnimationFrame(frame);                         // asked for first, so one bad frame can never stop the game
     update(dt);
     draw();
-    requestAnimationFrame(frame);
   }
 
   // For testing only: open the page with #cctest to let a script read the game and tap.
   if (/cctest/.test(location.hash)) {
-    window.__cc = { state: function () { return S; }, tap: tap, ballX: function () { return BX; } };
+    window.__cc = { state: function () { return S; }, tap: tap, ballX: function () { return BX; },
+                    dream: function () { S.dreamAt = S.t + 0.3; } };
   }
 
   window.addEventListener("resize", resize);
@@ -1242,5 +1552,6 @@
   soundLabel();
   board();
   buildBalls();
+  drawMandala();
   requestAnimationFrame(frame);
 })();

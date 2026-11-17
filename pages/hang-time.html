@@ -9,6 +9,8 @@
         <div><dt>Best</dt><dd id="cc-best">0.00</dd></div>
         <div><dt>Kernels</dt><dd id="cc-kernels">0</dd></div>
         <div><dt>Jackpot</dt><dd id="cc-pot">150</dd></div>
+        <div><dt>You are</dt><dd class="cc-word" id="cc-type">In 10 punts</dd></div>
+        <div><dt>Nemesis</dt><dd class="cc-word" id="cc-nemesis">None yet</dd></div>
       </dl>
 
       <canvas class="cc-field" id="cc-field" width="960" height="480"
@@ -21,6 +23,16 @@
         <button class="cc-mini" id="cc-sound" type="button" aria-pressed="true">Sound on</button>
       </div>
 
+      <h3 class="cc-how-title">Today, in one picture</h3>
+      <div class="cc-today">
+        <canvas class="cc-mandala" id="cc-mandala" width="360" height="360" role="img" aria-label="A circle of petals, one for each punt today. Longer petals are longer punts."></canvas>
+        <div>
+          <p class="cc-status" id="cc-mandala-note">Your first punt today starts it.</p>
+          <p class="cc-key">One petal for every punt. The longer it hung, the longer the petal. The colour is what brought it down: <span style="--k:#5B6475">storm</span> <span style="--k:#3FA34D">corn</span> <span style="--k:#8A1F1F">returner</span> <span style="--k:#15151A">crow</span> <span style="--k:#8B5A2B">ground</span> <span style="--k:#D9A300">gate</span></p>
+          <button class="cc-mini" id="cc-save" type="button" hidden>Save the picture</button>
+        </div>
+      </div>
+
       <h3 class="cc-how-title">Pick your ball</h3>
       <div class="cc-balls" id="cc-balls"></div>
 
@@ -28,12 +40,16 @@
       <summary class="cc-how-title">How it works</summary>
       <ul class="cc-how">
         <li>Tap, click or press the space bar to punt. Every tap after that lifts the ball. Stop tapping and it drops.</li>
-        <li>Fly between the corn and the storm clouds. Touch anything, or the ground, and the punt is down. Tap once and the next one is up.</li>
+        <li>Fly between the corn and the storm clouds. Touch anything, or the ground, and the punt is down. The ball comes back to the punter; tap and it is up again.</li>
         <li>Returners jump for the ball as it goes over, and later crows fly at you; a red arrow warns you first.</li>
         <li>Hang time is your score. The gold dashed line is your best punt.</li>
         <li>Kernels unlock new balls. The big ones against the corn and the clouds are worth five, and so is squeezing through a gold Coffin CORNer gate.</li>
         <li>A helmet takes one hit for you.</li>
-        <li>Keep an eye on the paint on the grass as it goes by.</li>
+        <li>After ten punts the game tells you what kind of punter you are, from how you play. It can change.</li>
+        <li>Whatever brings you down most becomes your nemesis. Go ten punts without losing to it and it is beaten, for 50 kernels.</li>
+        <li>Every kernel also drops into the ear of corn in the top corner. Fill it and it pops for 50 more.</li>
+        <li>Pick up kernels without missing one and each plays the next note up.</li>
+        <li>Keep your eyes open. Now and then there is something to see.</li>
         <li>Now and then a positive word flashes in the sky, too quick to read. They are things like "you've got this" and "breathe", and nothing else.</li>
         <li>A punt of five seconds or more spins the kernel slots when it comes down. Three ears of corn wins the jackpot, which grows until someone hits it.</li>
       </ul>
