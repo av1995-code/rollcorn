@@ -2,29 +2,33 @@
   <section class="cc" id="game" aria-labelledby="h-game">
     <h2 class="sign cc-title" id="h-game">Coffin <span class="cc-corn">CORN</span>er</h2>
     <div class="cc-body">
-      <p class="merch-intro">Five punts. Hang it high, pin them deep.</p>
+      <p class="merch-intro">Hang it high. Pin them deep. Keep your ears.</p>
 
       <dl class="cc-board">
-        <div><dt>Punt</dt><dd id="cc-punt">1 of 5</dd></div>
         <div><dt>Score</dt><dd id="cc-score">0</dd></div>
+        <div><dt>Streak</dt><dd id="cc-streak">x1</dd></div>
+        <div><dt>Ears</dt><dd class="cc-lives" id="cc-lives" role="img" aria-label="3 of 3 ears left"><svg class="cc-life" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg><svg class="cc-life" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg><svg class="cc-life" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></dd></div>
         <div><dt>Best</dt><dd id="cc-best">0</dd></div>
       </dl>
 
-      <canvas class="cc-field" id="cc-field" width="960" height="440"
-              role="img" aria-label="Side view of a football field with a cornfield behind the end zone. The game is played with the button below."></canvas>
+      <canvas class="cc-field" id="cc-field" width="960" height="480"
+              role="img" aria-label="Side view of a football field at golden hour, with a cornfield behind the end zone. The game is played with the button below."></canvas>
 
       <div class="cc-controls">
         <button class="cc-go" id="cc-go" type="button">Start</button>
         <p class="cc-status" id="cc-status" aria-live="polite">Tap the field, press the button, or hit the space bar.</p>
+        <button class="cc-mini" id="cc-share" type="button" hidden>Share score</button>
+        <button class="cc-mini" id="cc-sound" type="button" aria-pressed="true">Sound on</button>
       </div>
 
-      <h3 class="cc-how-title">How it scores</h3>
+      <h3 class="cc-how-title">How it works</h3>
       <ul class="cc-how">
-        <li>Tap once to set the angle, and again to set the power.</li>
+        <li>Tap once to set the angle, and again to set the power. The marker shows where the ball will come down.</li>
         <li>Keep the ball up for 4.40 seconds and your coverage gets there first: no return.</li>
         <li>Come down sooner and the returner brings it back. The shorter the hang time, the longer the return.</li>
-        <li>Stop it inside the 10 for a Coffin CORNer bonus. Inside the 5 is worth double.</li>
-        <li>Reach the end zone and it is a touchback: out to the 20, with no hang time bonus.</li>
+        <li>Stop it inside the 10 for a Coffin CORNer. String them together and every punt is worth more, up to five times.</li>
+        <li>A touchback, or a punt that leaves them outside the 20, costs an ear. Lose all three and the game is over.</li>
+        <li>Three Coffin CORNers in a row grows an ear back. The meters get faster the longer you last.</li>
       </ul>
     </div>
   </section>

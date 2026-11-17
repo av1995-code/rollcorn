@@ -514,9 +514,10 @@ main {
   display: block;
   width: 100%;
   max-width: 68rem;
-  border: 3px solid var(--ink);
-  border-radius: 6px;
-  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 10px;
+  background: #BFE4F6;
+  box-shadow: 6px 6px 0 var(--gold), 6px 6px 0 3px var(--ink);
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
@@ -546,6 +547,24 @@ main {
 .cc-go:hover:not(:disabled) { background: #000; color: var(--gold); }
 .cc-go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .cc-go:disabled { background: #fff; color: var(--husk); border-color: var(--husk); }
+.cc-lives { display: flex; gap: .15rem; align-items: center; height: 1em; }
+.cc-life { width: 1.05em; height: 1.05em; transition: opacity .3s, transform .3s, filter .3s; }
+.cc-life.is-lost { opacity: .22; filter: grayscale(1); transform: scale(.8) rotate(-25deg); }
+.cc-mini {
+  font-family: var(--condensed);
+  flex: none;
+  padding: .45em .7em .38em;
+  border: 2px solid #000;
+  border-radius: 5px;
+  background: #fff;
+  color: #000;
+  font-size: .95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.cc-mini:hover { background: var(--gold); }
+.cc-mini:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.cc-mini[hidden] { display: none; }
 .cc-status { flex: 1 1 16rem; margin: 0; font-weight: 500; min-height: 2.9em; }
 .cc-how-title {
   font-family: var(--slab);
