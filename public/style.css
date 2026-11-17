@@ -514,6 +514,7 @@ main {
 .cc-today { display: flex; flex-wrap: wrap; gap: 1rem 1.75rem; align-items: center; padding: 1rem 0 0; max-width: 68rem; }
 .cc-mandala { flex: none; width: min(100%, 15rem); height: auto; aspect-ratio: 1; }
 .cc-today > div { flex: 1 1 16rem; }
+.cc-you { margin: .6rem 0 0; }
 .cc-key { margin: .5rem 0 .8rem; color: var(--husk); font-size: .92rem; max-width: 38ch; }
 .cc-key span { white-space: nowrap; margin-right: .35em; }
 .cc-key span::before { content: ""; display: inline-block; width: .7em; height: .7em; margin-right: .3em; border-radius: 50%; background: var(--k); border: 1px solid #000; }
@@ -570,6 +571,8 @@ main {
   line-height: 1;
 }
 .cc-mini:hover { background: var(--gold); }
+.cc-slotbtn { background: var(--gold); }
+.cc-slotbtn:hover { background: #000; color: var(--gold); }
 .cc-mini:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .cc-mini[hidden] { display: none; }
 .cc-mini:disabled { background: #F3F1E8; color: var(--husk); border-color: var(--furrow); }
