@@ -1,0 +1,44 @@
+<main>
+  <section class="cc" id="game" aria-labelledby="h-game">
+    <h2 class="sign cc-title" id="h-game">Hang Time</h2>
+    <div class="cc-body">
+      <p class="merch-intro">Keep the punt in the air. How long can you hang?</p>
+
+      <dl class="cc-board">
+        <div><dt>Hang time</dt><dd id="cc-score">0.00</dd></div>
+        <div><dt>Best</dt><dd id="cc-best">0.00</dd></div>
+        <div><dt>Kernels</dt><dd id="cc-kernels">0</dd></div>
+        <div><dt>Jackpot</dt><dd id="cc-pot">150</dd></div>
+      </dl>
+
+      <canvas class="cc-field" id="cc-field" width="960" height="480"
+              role="img" aria-label="A football field with corn and storm clouds to fly a punt between. The game is played by tapping the field or the button below."></canvas>
+
+      <div class="cc-controls">
+        <button class="cc-go" id="cc-go" type="button">Punt</button>
+        <p class="cc-status" id="cc-status" aria-live="polite">Tap the field, press the button, or hit the space bar to punt.</p>
+        <button class="cc-mini" id="cc-share" type="button" hidden>Share score</button>
+        <button class="cc-mini" id="cc-sound" type="button" aria-pressed="true">Sound on</button>
+      </div>
+
+      <h3 class="cc-how-title">Pick your ball</h3>
+      <div class="cc-balls" id="cc-balls"></div>
+
+      <details class="cc-details">
+      <summary class="cc-how-title">How it works</summary>
+      <ul class="cc-how">
+        <li>Tap, click or press the space bar to punt. Every tap after that lifts the ball. Stop tapping and it drops.</li>
+        <li>Fly between the corn and the storm clouds. Touch anything, or the ground, and the punt is down. Tap once and the next one is up.</li>
+        <li>Returners jump for the ball as it goes over, and later crows fly at you; a red arrow warns you first.</li>
+        <li>Hang time is your score. The gold dashed line is your best punt.</li>
+        <li>Kernels unlock new balls. The big ones against the corn and the clouds are worth five, and so is squeezing through a gold Coffin CORNer gate.</li>
+        <li>A helmet takes one hit for you.</li>
+        <li>Keep an eye on the paint on the grass as it goes by.</li>
+        <li>Now and then a positive word flashes in the sky, too quick to read. They are things like "you've got this" and "breathe", and nothing else.</li>
+        <li>A punt of five seconds or more spins the kernel slots when it comes down. Three ears of corn wins the jackpot, which grows until someone hits it.</li>
+      </ul>
+      </details>
+    </div>
+  </section>
+</main>
+<script src="hang-time.js?v={{js}}"></script>

@@ -10,7 +10,7 @@ not affiliated with the University of Iowa.
 | `feeds.json` | The list of news sources, the sports, and the keywords that sort a headline into a sport. Edit this to add or remove sources. |
 | `build.py` | Pulls every feed and writes `public/index.html`. Standard Python only, nothing to install. |
 | `template.html` | The page layout. |
-| `pages/coffin-corner.html`, `public/coffin-corner.js` | The Coffin CORNer punt game: the page and the game itself. |
+| `pages/hang-time.html`, `public/hang-time.js` | Hang Time, the punt game: the page and the game itself. |
 | `public/style.css` | The look: colors, type, spacing. |
 | `.github/workflows/update.yml` | Rebuilds and republishes the page twice an hour on GitHub. |
 

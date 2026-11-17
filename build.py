@@ -373,17 +373,33 @@ def render_merch(sports):
 
 
 def render_game(sports):
-    """The Coffin CORNer punt game: a fixed page plus public/coffin-corner.js."""
+    """Hang Time, the punt game: a fixed page plus public/hang-time.js."""
     site = CFG["site"]
-    js = hashlib.md5((ROOT / "public" / "coffin-corner.js").read_bytes()).hexdigest()[:10]
+    js = hashlib.md5((ROOT / "public" / "hang-time.js").read_bytes()).hexdigest()[:10]
     return shell(
-        title="Coffin CORNer: the %s punt game" % site["name"],
+        title="Hang Time: the %s punt game" % site["name"],
         description="Keep the punt in the air. A hang time game from %s." % site["name"],
-        path="coffin-corner.html", home="./", home_label="%s home" % site["name"],
+        path="hang-time.html", home="./", home_label="%s home" % site["name"],
         skip_href="#game", skip_text="Skip to the game",
         aside="", nav=sport_links(sports, "./"), game_current=' aria-current="page"',
-        main=(ROOT / "pages" / "coffin-corner.html").read_text().replace("{{js}}", js),
+        main=(ROOT / "pages" / "hang-time.html").read_text().replace("{{js}}", js),
         footer="  " + DISCLAIMER)
+
+
+# The game used to live at coffin-corner.html; that address now sends people on.
+MOVED = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hang Time</title>
+<link rel="canonical" href="{url}/hang-time.html">
+<meta http-equiv="refresh" content="0; url=hang-time.html">
+</head>
+<body>
+<p>The game is now called Hang Time. <a href="hang-time.html">Play it here.</a></p>
+</body>
+</html>
+"""
 
 
 def main():
@@ -396,7 +412,8 @@ def main():
     home, sports = render(items)
     OUT.write_text(home)
     (OUT.parent / "merch.html").write_text(render_merch(sports))
-    (OUT.parent / "coffin-corner.html").write_text(render_game(sports))
+    (OUT.parent / "hang-time.html").write_text(render_game(sports))
+    (OUT.parent / "coffin-corner.html").write_text(MOVED.format(url=CFG["site"]["url"]))
     print("Wrote %s with %d headlines." % (OUT.relative_to(ROOT), len(items)), file=sys.stderr)
 
 

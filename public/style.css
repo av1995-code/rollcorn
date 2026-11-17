@@ -479,7 +479,7 @@ main {
 .product-buy { background: var(--gold); color: #000; text-decoration: none; border: 2px solid #000; }
 .product-buy:hover { background: #000; color: var(--gold); }
 
-/* ---------- Coffin CORNer, the punt game ---------- */
+/* ---------- Hang Time, the punt game ---------- */
 
 .cc-title { text-transform: none; }
 .cc-corn { background: #000; color: var(--gold); padding: 0 .12em; border-radius: 3px; }
@@ -579,6 +579,8 @@ main {
   font-weight: 700;
   line-height: 1;
 }
+.cc-details > summary { cursor: pointer; list-style-position: inside; }
+.cc-details > summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .cc-how { margin: 0; padding: 0; list-style: none; max-width: var(--measure); }
 .cc-how li { padding: .62rem 0; border-bottom: 1px solid var(--furrow); }
 
