@@ -2,33 +2,44 @@
   <section class="cc" id="game" aria-labelledby="h-game">
     <h2 class="sign cc-title" id="h-game">Coffin <span class="cc-corn">CORN</span>er</h2>
     <div class="cc-body">
-      <p class="merch-intro">Hang it high. Pin them deep. Keep your ears.</p>
+      <p class="merch-intro">Keep the punt in the air. How long can you hang?</p>
 
       <dl class="cc-board">
-        <div><dt>Score</dt><dd id="cc-score">0</dd></div>
-        <div><dt>Streak</dt><dd id="cc-streak">x1</dd></div>
-        <div><dt>Ears</dt><dd class="cc-lives" id="cc-lives" role="img" aria-label="3 of 3 ears left"><svg class="cc-life" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg><svg class="cc-life" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg><svg class="cc-life" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></dd></div>
-        <div><dt>Best</dt><dd id="cc-best">0</dd></div>
+        <div><dt>Hang time</dt><dd id="cc-score">0.00</dd></div>
+        <div><dt>Best</dt><dd id="cc-best">0.00</dd></div>
+        <div><dt>Kernels</dt><dd id="cc-kernels">0</dd></div>
+        <div><dt>Day streak</dt><dd id="cc-days">0</dd></div>
       </dl>
 
       <canvas class="cc-field" id="cc-field" width="960" height="480"
-              role="img" aria-label="Side view of a football field at golden hour, with a cornfield behind the end zone. The game is played with the button below."></canvas>
+              role="img" aria-label="A football field with corn and storm clouds to fly a punt between. The game is played by tapping the field or the button below."></canvas>
 
       <div class="cc-controls">
-        <button class="cc-go" id="cc-go" type="button">Start</button>
-        <p class="cc-status" id="cc-status" aria-live="polite">Tap the field, press the button, or hit the space bar.</p>
+        <button class="cc-go" id="cc-go" type="button">Punt</button>
+        <p class="cc-status" id="cc-status" aria-live="polite">Tap the field, press the button, or hit the space bar to punt.</p>
         <button class="cc-mini" id="cc-share" type="button" hidden>Share score</button>
         <button class="cc-mini" id="cc-sound" type="button" aria-pressed="true">Sound on</button>
       </div>
 
+      <h3 class="cc-how-title">Goals</h3>
+      <ul class="cc-how" id="cc-goals"></ul>
+
+      <h3 class="cc-how-title">Pick your ball</h3>
+      <div class="cc-balls" id="cc-balls"></div>
+
       <h3 class="cc-how-title">How it works</h3>
       <ul class="cc-how">
-        <li>Tap once to set the angle, and again to set the power. The marker shows where the ball will come down.</li>
-        <li>Keep the ball up for 4.40 seconds and your coverage gets there first: no return.</li>
-        <li>Come down sooner and the returner brings it back. The shorter the hang time, the longer the return.</li>
-        <li>Stop it inside the 10 for a Coffin CORNer. String them together and every punt is worth more, up to five times.</li>
-        <li>A touchback, or a punt that leaves them outside the 20, costs an ear. Lose all three and the game is over.</li>
-        <li>Three Coffin CORNers in a row grows an ear back. The meters get faster the longer you last.</li>
+        <li>Tap, click or press the space bar to punt. Every tap after that lifts the ball. Stop tapping and it drops.</li>
+        <li>Fly between the corn and the storm clouds. Touch either one, or the ground, and the punt is down.</li>
+        <li>Returners jump for the ball as it goes over. Later on, crows fly at you; a red arrow warns you first.</li>
+        <li>Hang time is your score. It gets faster and tighter the longer you stay up, and the sun goes down.</li>
+        <li>Pick up kernels to unlock new balls. A gold Coffin CORNer gate is a tight squeeze worth five.</li>
+        <li>Grab a helmet and it takes one hit for you. Grab a magnet and kernels fly to the ball for a few seconds.</li>
+        <li>Squeeze past the corn or a cloud with almost no room and it counts as a close call, worth a kernel.</li>
+        <li>Beat a goal to earn kernels, and a harder one takes its place.</li>
+        <li>Collect the letters C, O, R and N. They carry over from punt to punt, and the fourth one sets off a popcorn frenzy: six seconds with nothing in your way and kernels everywhere.</li>
+        <li>The dashed lines are the next rank and your best punt. Fly through them.</li>
+        <li>Your first punt each day pays kernels, and more for every day in a row.</li>
       </ul>
     </div>
   </section>

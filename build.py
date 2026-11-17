@@ -378,7 +378,7 @@ def render_game(sports):
     js = hashlib.md5((ROOT / "public" / "coffin-corner.js").read_bytes()).hexdigest()[:10]
     return shell(
         title="Coffin CORNer: the %s punt game" % site["name"],
-        description="Hang it high, pin them deep, keep your ears. A hang time game from %s." % site["name"],
+        description="Keep the punt in the air. A hang time game from %s." % site["name"],
         path="coffin-corner.html", home="./", home_label="%s home" % site["name"],
         skip_href="#game", skip_text="Skip to the game",
         aside="", nav=sport_links(sports, "./"), game_current=' aria-current="page"',
