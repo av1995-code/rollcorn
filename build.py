@@ -352,7 +352,9 @@ def shell(**fields):
     # A fingerprint of the stylesheet goes in its address, so a browser never
     # pairs a new page with an old, remembered copy of the styles.
     fields.setdefault("css", hashlib.md5((ROOT / "public" / "style.css").read_bytes()).hexdigest()[:10])
-    raw = {"main", "footer", "nav", "aside", "merch_current"}   # already HTML
+    fields.setdefault("merch_current", "")
+    fields.setdefault("game_current", "")
+    raw = {"main", "footer", "nav", "aside", "merch_current", "game_current"}   # already HTML
     for key, value in fields.items():
         page = page.replace("{{%s}}" % key, value if key in raw else esc(value))
     return page.replace("{name}", esc(site["name"]))
@@ -370,6 +372,20 @@ def render_merch(sports):
         footer="  " + DISCLAIMER)
 
 
+def render_game(sports):
+    """The Coffin CORNer punt game: a fixed page plus public/coffin-corner.js."""
+    site = CFG["site"]
+    js = hashlib.md5((ROOT / "public" / "coffin-corner.js").read_bytes()).hexdigest()[:10]
+    return shell(
+        title="Coffin CORNer: the %s punt game" % site["name"],
+        description="Five punts. Hang it high, pin them deep. A hang time game from %s." % site["name"],
+        path="coffin-corner.html", home="./", home_label="%s home" % site["name"],
+        skip_href="#game", skip_text="Skip to the game",
+        aside="", nav=sport_links(sports, "./"), game_current=' aria-current="page"',
+        main=(ROOT / "pages" / "coffin-corner.html").read_text().replace("{{js}}", js),
+        footer="  " + DISCLAIMER)
+
+
 def main():
     print("Pulling feeds…", file=sys.stderr)
     items = gather()
@@ -380,6 +396,7 @@ def main():
     home, sports = render(items)
     OUT.write_text(home)
     (OUT.parent / "merch.html").write_text(render_merch(sports))
+    (OUT.parent / "coffin-corner.html").write_text(render_game(sports))
     print("Wrote %s with %d headlines." % (OUT.relative_to(ROOT), len(items)), file=sys.stderr)
 
 

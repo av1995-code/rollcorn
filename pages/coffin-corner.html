@@ -1,0 +1,32 @@
+<main>
+  <section class="cc" id="game" aria-labelledby="h-game">
+    <h2 class="sign cc-title" id="h-game">Coffin <span class="cc-corn">CORN</span>er</h2>
+    <div class="cc-body">
+      <p class="merch-intro">Five punts. Hang it high, pin them deep.</p>
+
+      <dl class="cc-board">
+        <div><dt>Punt</dt><dd id="cc-punt">1 of 5</dd></div>
+        <div><dt>Score</dt><dd id="cc-score">0</dd></div>
+        <div><dt>Best</dt><dd id="cc-best">0</dd></div>
+      </dl>
+
+      <canvas class="cc-field" id="cc-field" width="960" height="440"
+              role="img" aria-label="Side view of a football field with a cornfield behind the end zone. The game is played with the button below."></canvas>
+
+      <div class="cc-controls">
+        <button class="cc-go" id="cc-go" type="button">Start</button>
+        <p class="cc-status" id="cc-status" aria-live="polite">Tap the field, press the button, or hit the space bar.</p>
+      </div>
+
+      <h3 class="cc-how-title">How it scores</h3>
+      <ul class="cc-how">
+        <li>Tap once to set the angle, and again to set the power.</li>
+        <li>Keep the ball up for 4.40 seconds and your coverage gets there first: no return.</li>
+        <li>Come down sooner and the returner brings it back. The shorter the hang time, the longer the return.</li>
+        <li>Stop it inside the 10 for a Coffin CORNer bonus. Inside the 5 is worth double.</li>
+        <li>Reach the end zone and it is a touchback: out to the 20, with no hang time bonus.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<script src="coffin-corner.js?v={{js}}"></script>

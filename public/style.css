@@ -479,6 +479,87 @@ main {
 .product-buy { background: var(--gold); color: #000; text-decoration: none; border: 2px solid #000; }
 .product-buy:hover { background: #000; color: var(--gold); }
 
+/* ---------- Coffin CORNer, the punt game ---------- */
+
+.cc-title { text-transform: none; }
+.cc-corn { background: #000; color: var(--gold); padding: 0 .12em; border-radius: 3px; }
+.cc-body {
+  margin: 0 0 0 .9rem;
+  padding: 1.1rem 0 .25rem 1.4rem;
+  border-left: 3px solid var(--stake);
+}
+.cc-body .merch-intro { margin-bottom: 1rem; }
+.cc-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem clamp(1.25rem, 4vw, 3rem);
+  margin: 0 0 .8rem;
+}
+.cc-board dt {
+  font-family: var(--condensed);
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--husk);
+}
+.cc-board dd {
+  font-family: var(--display);
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cc-field {
+  display: block;
+  width: 100%;
+  max-width: 68rem;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+  background: #fff;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cc-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .8rem 1.25rem;
+  margin: 1rem 0 0;
+  max-width: 68rem;
+}
+.cc-go {
+  font-family: var(--display);
+  flex: none;
+  min-width: 9.5rem;
+  padding: .5em .9em .42em;
+  border: 3px solid #000;
+  border-radius: 6px;
+  background: var(--gold);
+  color: #000;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.cc-go:hover:not(:disabled) { background: #000; color: var(--gold); }
+.cc-go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.cc-go:disabled { background: #fff; color: var(--husk); border-color: var(--husk); }
+.cc-status { flex: 1 1 16rem; margin: 0; font-weight: 500; min-height: 2.9em; }
+.cc-how-title {
+  font-family: var(--slab);
+  margin: clamp(1.75rem, 3vw, 2.5rem) 0 0;
+  padding-bottom: .45rem;
+  border-bottom: 3px solid var(--stake);
+  max-width: var(--measure);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.cc-how { margin: 0; padding: 0; list-style: none; max-width: var(--measure); }
+.cc-how li { padding: .62rem 0; border-bottom: 1px solid var(--furrow); }
+
 /* ---------- footer ---------- */
 
 .foot {
@@ -503,5 +584,5 @@ main {
   .wordmark .word + .word { margin-left: 0; }
   .masthead-sign { grid-template-columns: 1fr; }
   .updated { text-align: left; margin-top: .5rem; }
-  .latest-body, .plot-body, .quiet, .merch-body { margin-left: .5rem; padding-left: 1rem; }
+  .latest-body, .plot-body, .quiet, .merch-body, .cc-body { margin-left: .5rem; padding-left: 1rem; }
 }
