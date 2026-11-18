@@ -1088,3 +1088,6 @@ main { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
 .more-link.on-dark { margin: 0; border: 0; border-top: 1px solid #2A2A2A; border-radius: 0; color: var(--go); }
 .more-link.on-dark:hover { background: #1E1E1E; color: #fff; }
 .is-searching .more-link, .is-searching .page-head .plot-meta { display: none; }
+
+/* a headline held back for the sport filter stays out of sight, and out of the count */
+.brief[hidden] { display: none; }

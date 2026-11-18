@@ -498,7 +498,7 @@ def render(items):
     latest = items[: CFG["latest_count"]]
     lead, runners = latest[0], latest[1:4]
     rest = items[4:64]                 # the headline list: ten showing, the rest there for the sport filter
-    shown = len(latest) - 4
+    shown = 10
     in_list = {it["sport"] for it in rest}
     chips = '<button class="chip is-on" type="button" data-sport="" aria-pressed="true">All</button>' + "".join(
         '<button class="chip" type="button" data-sport="%s" aria-pressed="false">%s</button>' % (esc(sp["id"]), esc(sp["name"]))
