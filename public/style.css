@@ -1037,3 +1037,54 @@ main { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
 .prob-key span:first-child, .prob-key span:last-child { flex: 0 1 30%; }
 .prob-key span:last-child { text-align: right; }
 .prob-key span:nth-child(2) { flex: 1 0 auto; }
+
+
+/* ---------- a site of pages: the bar marks the page, each page has a title band, the front page links onward ---------- */
+
+.jump-sports a[aria-current] { color: #fff; border-bottom-color: var(--gold); }
+.jump-sports a.jump-odds[aria-current] { color: var(--go); border-bottom-color: var(--go); }
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem 1rem;
+  margin: 0 0 clamp(1rem, 2vw, 1.5rem);
+  padding: clamp(1rem, 2.5vw, 1.6rem) clamp(1rem, 2.5vw, 1.75rem);
+  border-radius: 12px;
+  border-left: 8px solid var(--gold);
+  background: #000;
+  color: #fff;
+  box-shadow: var(--card);
+}
+.crumb { font-family: var(--condensed); flex: 1 0 100%; color: #B9B9B0; font-size: .82rem; font-weight: 700; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+.crumb::before { content: "\2190  "; }
+.crumb:hover { color: var(--gold); }
+.page-title { font-family: var(--display); margin: 0 auto 0 0; font-size: clamp(2.4rem, 7vw, 4.5rem); font-weight: 700; line-height: .98; text-transform: uppercase; }
+.page .lead { margin-bottom: clamp(1rem, 2vw, 1.5rem); min-height: clamp(12rem, 24vw, 18rem); }
+.page .odds { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
+@media (min-width: 58rem) { .stories.cols { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); } }
+.stories.cols .story:first-child { border-top: 0; }
+
+.plot .sign a { color: inherit; text-decoration: none; }
+.plot .sign a:hover { color: var(--gold); }
+.more-link {
+  font-family: var(--condensed);
+  display: block;
+  margin: .5rem 0 .5rem;
+  padding: .6rem 1rem .5rem;
+  border: 2px solid #000;
+  border-radius: 8px;
+  color: #000;
+  font-size: .9rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.more-link::after { content: " \2192"; }
+.more-link:hover { background: #000; color: var(--gold); }
+.more-link.on-dark { margin: 0; border: 0; border-top: 1px solid #2A2A2A; border-radius: 0; color: var(--go); }
+.more-link.on-dark:hover { background: #1E1E1E; color: #fff; }
+.is-searching .more-link, .is-searching .page-head .plot-meta { display: none; }
