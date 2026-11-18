@@ -245,11 +245,15 @@ def stamp(d, short=False):
     return '<time datetime="%s">%s</time>' % (d.strftime("%Y-%m-%dT%H:%M:%SZ"), text)
 
 
-def story(it, tag="li", cls="story"):
+SPORT_NAMES = {s["id"]: s["name"] for s in CFG["sports"] + [CFG["other_sport"]]}
+
+
+def story(it, tag="li", cls="story", kicker=False):
     return (
-        '<{t} class="{cls}"><a href="{href}" rel="noopener">{title}</a>'
+        '<{t} class="{cls}">{kick}<a href="{href}" rel="noopener">{title}</a>'
         '<p class="from"><span class="source">{src}</span> {when}</p></{t}>'
     ).format(t=tag, cls=cls, href=esc(it["link"]), title=esc(it["title"]),
+             kick='<p class="kicker">%s</p>' % esc(SPORT_NAMES.get(it["sport"], "Iowa")) if kicker else "",
              src=esc(it["source"]), when=stamp(it["date"]))
 
 
@@ -274,7 +278,9 @@ IOWA = "Iowa Hawkeyes"
 ODDS_API = "https://api.the-odds-api.com/v4/sports/"
 ODDS_SPORTS = [("Football", "americanfootball_ncaaf"),
                ("Men's basketball", "basketball_ncaab"),
-               ("Women's basketball", "basketball_wncaab")]
+               ("Women's basketball", "basketball_wncaab"),
+               ("Baseball", "baseball_ncaa")]
+ODDS_VERSION = 2                       # raise this when the saved shape changes, so the next build fetches afresh
 ODDS_BOOKS = ["draftkings", "fanduel", "betmgm", "williamhill_us", "espnbet"]     # first one with a line wins
 ODDS_EVERY = dt.timedelta(hours=14)
 ODDS_FILE = ROOT / "public" / "odds.json"
@@ -300,21 +306,25 @@ def odds_get(path, key, **params):
 
 
 def upcoming(label, sport, key):
-    """Iowa's next games in one sport, with the first listed sportsbook's line for each."""
-    until = NOW + dt.timedelta(days=9)
+    """Iowa's next games in one sport. Each carries the first listed sportsbook's line, or no numbers
+    at all when no book has posted one yet: college basketball lines often appear only the day before."""
+    until = NOW + dt.timedelta(days=14)
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     events = odds_get(sport + "/events", key, commenceTimeFrom=NOW.strftime(fmt), commenceTimeTo=until.strftime(fmt))   # free
-    mine = sorted((e for e in events if IOWA in (e["home_team"], e["away_team"])), key=lambda e: e["commence_time"])[:2]
+    mine = sorted((e for e in events if IOWA in (e["home_team"], e["away_team"])), key=lambda e: e["commence_time"])[:3]
     if not mine:
         return []
-    data = odds_get(sport + "/odds", key, regions="us", markets="h2h,spreads,totals", oddsFormat="american",
-                    eventIds=",".join(e["id"] for e in mine))                                                          # three credits
+    priced = {}
+    try:
+        data = odds_get(sport + "/odds", key, regions="us", markets="h2h,spreads,totals", oddsFormat="american",
+                        eventIds=",".join(e["id"] for e in mine))                                                      # three credits
+        priced = {e["id"]: e for e in data}
+    except Exception as exc:                         # the schedule is still worth showing
+        print("  odds: %s lines: %s" % (label, exc), file=sys.stderr)
     games = []
-    for ev in sorted(data, key=lambda e: e["commence_time"]):
-        books = {bk["key"]: bk for bk in ev.get("bookmakers", [])}
-        book = next((books[k] for k in ODDS_BOOKS if k in books), None) or next(iter(books.values()), None)
-        if not book:
-            continue
+    for ev in mine:
+        books = {bk["key"]: bk for bk in priced.get(ev["id"], {}).get("bookmakers", [])}
+        book = next((books[k] for k in ODDS_BOOKS if k in books), None) or next(iter(books.values()), None) or {"markets": []}
         markets = {m["key"]: {o["name"]: o for o in m["outcomes"]} for m in book["markets"]}
         rows = []
         for side, team in (("away", ev["away_team"]), ("home", ev["home_team"])):
@@ -342,14 +352,16 @@ def load_odds():
             continue
     checked = dt.datetime.fromisoformat(saved["at"]) if saved else None
     key = os.environ.get("ODDS_API_KEY", "").strip()
-    if key and (not checked or NOW - checked >= ODDS_EVERY):
-        try:
-            games = []
-            for label, sport in ODDS_SPORTS:
+    if key and (not checked or NOW - checked >= ODDS_EVERY or saved.get("v") != ODDS_VERSION):
+        games, failed = [], 0
+        for label, sport in ODDS_SPORTS:
+            try:
                 games += upcoming(label, sport, key)
-            saved, checked = {"at": NOW.isoformat(), "games": games}, NOW
-        except Exception as exc:                     # out of credits, or the service is down: keep what we had
-            print("  odds: %s" % exc, file=sys.stderr)
+            except Exception as exc:                 # one sport failing should not cost the others
+                failed += 1
+                print("  odds: %s" % exc, file=sys.stderr)
+        if failed < len(ODDS_SPORTS):                # all failing means no credits or no service: keep what we had
+            saved, checked = {"v": ODDS_VERSION, "at": NOW.isoformat(), "games": games}, NOW
     elif not key and not saved:
         print("  odds: no ODDS_API_KEY set and no saved lines; the board will be empty.", file=sys.stderr)
     if saved:
@@ -364,7 +376,7 @@ def implied(money):
     return -money / (-money + 100) if money < 0 else 100 / (money + 100)
 
 
-ODDS_IDS = {"Football": "football", "Men's basketball": "mens-basketball", "Women's basketball": "womens-basketball"}
+ODDS_IDS = {"Football": "football", "Men's basketball": "mens-basketball", "Women's basketball": "womens-basketball", "Baseball": "baseball"}
 
 
 def odds_parts(games, checked, sport=None, limit=None, more=False):
@@ -376,14 +388,17 @@ def odds_parts(games, checked, sport=None, limit=None, more=False):
             return "", ""
     if limit:
         games = games[:limit]
-    cards, nextup = [], ""
+    cards, scores = [], []
     for g in games:
         local = g["when"].astimezone(ZoneInfo("America/Chicago"))
         kick = local.strftime("%a, %b ") + str(local.day) + local.strftime(" \u00B7 %I:%M %p CT").replace(" 0", " ")
         away, home = g["rows"]
         fav = min(g["rows"], key=lambda r: r["spread"] if r["spread"] is not None else 0)
         dog = home if fav is away else away
-        if fav["spread"] is None:
+        priced = any(r["spread"] is not None or r["money"] is not None for r in g["rows"])
+        if not priced:
+            read = "No line posted yet. Sportsbooks usually put college lines up a day or two before the game."
+        elif fav["spread"] is None:
             read = "No spread posted yet"
         elif fav["spread"] == 0:
             read = "A pick'em: no favorite"
@@ -411,18 +426,19 @@ def odds_parts(games, checked, sport=None, limit=None, more=False):
             for r in g["rows"])
         cards.append(
             '<article class="game"><p class="game-meta"><b>%s</b><span data-kick="%s">%s</span></p>'
-            '<h3 class="matchup"><span%s>%s</span> <i>at</i> <span%s>%s</span></h3><p class="read">%s</p>%s'
-            '<table class="lines"><thead><tr><th scope="col">Team</th><th scope="col">Spread</th><th scope="col">Total</th><th scope="col">Money</th></tr></thead>'
-            '<tbody>%s</tbody></table></article>' % (
+            '<h3 class="matchup"><span%s>%s</span> <i>at</i> <span%s>%s</span></h3><p class="read">%s</p>%s%s</article>' % (
                 esc(g["sport"]), g["when"].isoformat(), esc(kick),
                 ' class="is-iowa"' if away["iowa"] else "", esc(away["name"]), ' class="is-iowa"' if home["iowa"] else "", esc(home["name"]),
-                esc(read), prob, body))
-        if not nextup:
-            line = ("%s %s" % (fav["name"], signed(fav["spread"], True))) if fav["spread"] not in (None, 0) else ""
-            nextup = ('<a class="nextup" href="odds.html"><b>Next up</b><span class="nextup-game">%s at %s</span>'
-                      '<span data-kick="%s">%s</span>%s%s<span class="nextup-go">The lines</span></a>' % (
-                          esc(away["name"]), esc(home["name"]), g["when"].isoformat(), esc(kick),
-                          '<em>%s</em>' % esc(line) if line else "", '<em>O/U %s</em>' % esc(total) if total else ""))
+                esc(read), prob,
+                ('<table class="lines"><thead><tr><th scope="col">Team</th><th scope="col">Spread</th><th scope="col">Total</th><th scope="col">Money</th></tr></thead>'
+                 '<tbody>%s</tbody></table>' % body) if priced else ""))
+        # the same game as one tile on the scoreboard strip
+        scores.append(
+            '<a class="score" href="odds.html"><span class="score-top"><b>%s</b><span data-kick="%s">%s</span></span>%s<span class="score-foot">%s</span></a>' % (
+                esc(g["sport"]), g["when"].isoformat(), esc(kick),
+                "".join('<span class="score-team%s"><span>%s</span><b>%s</b></span>' % (
+                    " is-iowa" if r["iowa"] else "", esc(r["name"]), signed(r["spread"], True) if r["spread"] is not None else "") for r in g["rows"]),
+                ("O/U " + esc(total)) if total else ("Line posted" if priced else "No line yet")))
     books = []
     for g in games:
         if g["book"] and g["book"] not in books:
@@ -439,7 +455,9 @@ def odds_parts(games, checked, sport=None, limit=None, more=False):
                '<p class="odds-note">%sOdds move; check a sportsbook for the current number. {name} takes no bets and is here for information only. '
                'Betting is for adults 21 and over where it is legal. Gambling problem? Call 1-800-GAMBLER.</p></section>'
                % (stamp(checked or NOW), inner, '<a class="more-link on-dark" href="odds.html">All the lines</a>' if more else "", helper if not more else "", source))
-    return section, nextup
+    strip = ('<nav class="scores" aria-label="Upcoming games"><span class="scores-tag">Next up</span>'
+             '<div class="scores-row">%s</div></nav>' % "".join(scores)) if scores else ""
+    return section, strip
 
 
 def ticker(items, sports):
@@ -503,7 +521,7 @@ def render(items):
     chips = '<button class="chip is-on" type="button" data-sport="" aria-pressed="true">All</button>' + "".join(
         '<button class="chip" type="button" data-sport="%s" aria-pressed="false">%s</button>' % (esc(sp["id"]), esc(sp["name"]))
         for sp in sports if sp["id"] in in_list)
-    lines_html, nextup = odds_parts(games, checked, limit=1, more=True)
+    _, nextup = odds_parts(games, checked)
 
     sections = []
     for n, s in enumerate(by_heat):
@@ -526,9 +544,9 @@ def render(items):
 
     main_html = ((ROOT / "pages" / "home.html").read_text()
                  .replace("{{ticker}}", ticker(latest[:10], sports))
-                 .replace("{{odds}}", lines_html).replace("{{nextup}}", nextup).replace("{{chips}}", chips)
-                 .replace("{{lead}}", story(lead, "article", "story lead"))
-                 .replace("{{runners}}", "".join(story(it) for it in runners))
+                 .replace("{{nextup}}", nextup).replace("{{chips}}", chips)
+                 .replace("{{lead}}", story(lead, "article", "story lead", kicker=True))
+                 .replace("{{runners}}", "".join(story(it, kicker=True) for it in runners))
                  .replace("{{latest}}", "".join(brief(it, n >= shown) for n, it in enumerate(rest)))
                  .replace("{{sections}}", "\n".join(sections)))
     pages["index.html"] = shell(

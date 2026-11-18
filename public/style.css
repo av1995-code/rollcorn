@@ -1091,3 +1091,62 @@ main { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
 
 /* a headline held back for the sport filter stays out of sight, and out of the count */
 .brief[hidden] { display: none; }
+
+
+/* ---------- the scoreboard strip: every upcoming game as a tile, the way a score bar runs across the top ---------- */
+
+.scores { display: flex; align-items: stretch; margin: 0 0 .75rem; border-radius: 10px; overflow: hidden; background: #000; box-shadow: var(--card); }
+.scores-tag {
+  font-family: var(--condensed);
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 .9rem;
+  background: var(--gold);
+  color: #000;
+  font-size: .9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.scores-row { display: flex; gap: 1px; flex: 1; min-width: 0; overflow-x: auto; background: #2A2A2A; scroll-snap-type: x proximity; scrollbar-width: none; }
+.scores-row::-webkit-scrollbar { display: none; }
+.score {
+  font-family: var(--condensed);
+  flex: 1 0 13.5rem;
+  max-width: 20rem;
+  display: grid;
+  gap: .12rem;
+  padding: .6rem .9rem .55rem;
+  background: #111;
+  color: #fff;
+  text-decoration: none;
+  scroll-snap-align: start;
+  transition: background .15s;
+}
+.score:hover { background: #1E1E1E; }
+.score-top { display: flex; justify-content: space-between; gap: .75rem; color: #B9B9B0; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.score-top b { color: var(--gold); }
+.score-team { display: flex; justify-content: space-between; gap: .75rem; font-size: 1.05rem; font-weight: 700; line-height: 1.25; }
+.score-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-team b { font-variant-numeric: tabular-nums; }
+.score-team.is-iowa { color: var(--gold); }
+.score-foot { color: var(--go); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+@media (max-width: 34rem) { .scores-tag { writing-mode: vertical-rl; transform: rotate(180deg); padding: .5rem .35rem; font-size: .75rem; } }
+.is-searching .scores { display: none; }
+
+/* ---------- front page polish: every top card says which sport it is ---------- */
+
+.kicker { font-family: var(--condensed); margin: 0 0 .3rem; color: #9A6B00; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.lead .kicker { order: 0; margin: 1.25rem 0 0; color: var(--gold); font-size: .95rem; }
+.lead a { margin-top: .35rem; }
+.runners .story { display: flex; flex-direction: column; }
+.runners .story .from { margin-top: auto; padding-top: .6rem; }
+@media (min-width: 58rem) {
+  .latest-body { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  .lead { min-height: clamp(20rem, 30vw, 27rem); }
+}
+/* on a wide screen a board with one game should not stretch its price boxes across the page */
+.games { grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 40rem)); background: #101010; }
+.game + .game { box-shadow: -1px 0 0 #2A2A2A, 0 -1px 0 #2A2A2A; }
