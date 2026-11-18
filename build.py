@@ -262,6 +262,144 @@ def brief(it):
              src=esc(it["source"]), when=stamp(it["date"], short=True))
 
 
+# ---------- the lines: betting odds for the next games ----------
+#
+# Lines come from The Odds API (the-odds-api.com). The key is read from the ODDS_API_KEY environment
+# variable, which the GitHub workflow fills from a repository secret; it is never written to the page.
+# The free plan allows 500 credits a month and a request for three markets costs three, so the lines
+# are fetched at most every fourteen hours and kept in public/odds.json between builds. Each build
+# starts from the copy of that file on the live site.
+
+IOWA = "Iowa Hawkeyes"
+ODDS_API = "https://api.the-odds-api.com/v4/sports/"
+ODDS_SPORTS = [("Football", "americanfootball_ncaaf"),
+               ("Men's basketball", "basketball_ncaab"),
+               ("Women's basketball", "basketball_wncaab")]
+ODDS_BOOKS = ["draftkings", "fanduel", "betmgm", "williamhill_us", "espnbet"]     # first one with a line wins
+ODDS_EVERY = dt.timedelta(hours=14)
+ODDS_FILE = ROOT / "public" / "odds.json"
+
+
+def signed(n, digits=False):
+    """+260, -325, +8.5, or PK for a game with no favorite."""
+    if n is None:
+        return "\u2013"
+    n = float(n)
+    if digits and n == 0:
+        return "PK"
+    return ("%+.1f" % n).replace(".0", "") if digits else "%+d" % round(n)
+
+
+def odds_get(path, key, **params):
+    params["apiKey"] = key
+    try:
+        return json.loads(fetch(ODDS_API + path + "?" + urllib.parse.urlencode(params)))
+    except Exception as exc:
+        # never let the address, which carries the key, reach the build log
+        raise RuntimeError("%s: %s" % (path.split("/")[0], type(exc).__name__ + " " + str(getattr(exc, "code", "")))) from None
+
+
+def upcoming(label, sport, key):
+    """Iowa's next games in one sport, with the first listed sportsbook's line for each."""
+    until = NOW + dt.timedelta(days=9)
+    fmt = "%Y-%m-%dT%H:%M:%SZ"
+    events = odds_get(sport + "/events", key, commenceTimeFrom=NOW.strftime(fmt), commenceTimeTo=until.strftime(fmt))   # free
+    mine = sorted((e for e in events if IOWA in (e["home_team"], e["away_team"])), key=lambda e: e["commence_time"])[:2]
+    if not mine:
+        return []
+    data = odds_get(sport + "/odds", key, regions="us", markets="h2h,spreads,totals", oddsFormat="american",
+                    eventIds=",".join(e["id"] for e in mine))                                                          # three credits
+    games = []
+    for ev in sorted(data, key=lambda e: e["commence_time"]):
+        books = {bk["key"]: bk for bk in ev.get("bookmakers", [])}
+        book = next((books[k] for k in ODDS_BOOKS if k in books), None) or next(iter(books.values()), None)
+        if not book:
+            continue
+        markets = {m["key"]: {o["name"]: o for o in m["outcomes"]} for m in book["markets"]}
+        rows = []
+        for side, team in (("away", ev["away_team"]), ("home", ev["home_team"])):
+            spread = markets.get("spreads", {}).get(team, {})
+            total = markets.get("totals", {}).get("Over" if side == "away" else "Under", {})
+            rows.append({
+                "name": "Iowa" if team == IOWA else team, "iowa": team == IOWA,
+                "spread": spread.get("point"), "spread_price": spread.get("price"),
+                "money": markets.get("h2h", {}).get(team, {}).get("price"),
+                "total": ("O " if side == "away" else "U ") + "%g" % total["point"] if total.get("point") is not None else None,
+                "total_price": total.get("price"),
+            })
+        games.append({"sport": label, "when": ev["commence_time"], "rows": rows, "book": book.get("title", "")})
+    return games
+
+
+def load_odds():
+    """The lines to show and when they were checked: fresh from the service if the saved copy is old, else the saved copy."""
+    saved = None
+    for read in (lambda: fetch(CFG["site"]["url"] + "/odds.json"), lambda: ODDS_FILE.read_bytes()):
+        try:
+            saved = json.loads(read())
+            break
+        except Exception:
+            continue
+    checked = dt.datetime.fromisoformat(saved["at"]) if saved else None
+    key = os.environ.get("ODDS_API_KEY", "").strip()
+    if key and (not checked or NOW - checked >= ODDS_EVERY):
+        try:
+            games = []
+            for label, sport in ODDS_SPORTS:
+                games += upcoming(label, sport, key)
+            saved, checked = {"at": NOW.isoformat(), "games": games}, NOW
+        except Exception as exc:                     # out of credits, or the service is down: keep what we had
+            print("  odds: %s" % exc, file=sys.stderr)
+    elif not key and not saved:
+        print("  odds: no ODDS_API_KEY set and no saved lines; the board will be empty.", file=sys.stderr)
+    if saved:
+        ODDS_FILE.write_text(json.dumps(saved))
+    games = [dict(g, when=dt.datetime.fromisoformat(g["when"].replace("Z", "+00:00"))) for g in (saved or {}).get("games", [])]
+    return sorted((g for g in games if g["when"] > NOW), key=lambda g: g["when"]), checked
+
+
+def odds_section():
+    """The Lines card on the home page. With no lines to show, it says so."""
+    games, checked = load_odds()
+    cards = []
+    for g in games:
+        local = g["when"].astimezone(ZoneInfo("America/Chicago"))
+        kick = local.strftime("%a, %b ") + str(local.day) + local.strftime(" \u00B7 %I:%M %p CT").replace(" 0", " ")
+        body = "".join(
+            '<tr{cls}><th scope="row">{rank}{name}</th>'
+            '<td><b>{spread}</b><small>{sp}</small></td><td><b>{total}</b><small>{tp}</small></td><td><b>{money}</b></td></tr>'.format(
+                cls=' class="is-iowa"' if r["iowa"] else "",
+                rank="", name=esc(r["name"]),
+                spread=signed(r["spread"], True), sp=signed(r["spread_price"]) if r["spread_price"] is not None else "",
+                total=esc(r["total"] or "\u2013"), tp=signed(r["total_price"]) if r["total_price"] is not None else "",
+                money=signed(r["money"]))
+            for r in g["rows"])
+        cards.append(
+            '<article class="game"><p class="game-meta"><b>%s</b><span data-kick="%s">%s</span></p>'
+            '<table class="lines"><thead><tr><th scope="col">Team</th><th scope="col">Spread</th><th scope="col">Total</th><th scope="col">Money</th></tr></thead>'
+            '<tbody>%s</tbody></table></article>' % (esc(g["sport"]), g["when"].isoformat(), esc(kick), body))
+    book = next((g["book"] for g in games if g["book"]), "")
+    source = ("Lines from %s, by way of The Odds API. " % esc(book)) if book else ""
+    inner = ('<div class="games">%s</div>' % "".join(cards)) if cards else '<p class="odds-none">No lines are posted for the next week. They show up here a few days before each game.</p>'
+    return ('<section class="odds" id="odds" aria-labelledby="h-odds">'
+            '<header class="odds-head"><h2 class="sign" id="h-odds">The lines</h2><p class="odds-src">Checked %s</p></header>%s'
+            '<p class="odds-note">%sOdds move; check a sportsbook for the current number. {name} takes no bets and is here for information only. '
+            'Betting is for adults 21 and over where it is legal. Gambling problem? Call 1-800-GAMBLER.</p></section>'
+            % (stamp(checked or NOW), inner, source))
+
+
+def ticker(items, sports):
+    """The running line under the bar: the newest headlines, each tagged with its sport. The second
+    copy only makes the loop seamless, so it is hidden from screen readers and the keyboard."""
+    names = {s["id"]: s["name"] for s in sports}
+    def run(hidden):
+        return "".join(
+            '<a href="%s" rel="noopener"%s><b>%s</b>%s</a>' % (
+                esc(it["link"]), ' tabindex="-1"' if hidden else "", esc(names.get(it["sport"], "Iowa")), esc(it["title"]))
+            for it in items)
+    return '<span class="ticker-run">%s</span><span class="ticker-run" aria-hidden="true">%s</span>' % (run(False), run(True))
+
+
 def render(items):
     site = CFG["site"]
     sports = CFG["sports"] + [CFG["other_sport"]]
@@ -314,6 +452,8 @@ def render(items):
 
     sources = sorted({it["source"] for it in items}, key=str.lower)
     main_html = ((ROOT / "pages" / "home.html").read_text()
+                 .replace("{{ticker}}", ticker(latest[:10], sports))
+                 .replace("{{odds}}", odds_section())
                  .replace("{{lead}}", story(lead, "article", "story lead"))
                  .replace("{{runners}}", "".join(story(it) for it in runners))
                  .replace("{{latest}}", "".join(brief(it) for it in rest))
@@ -339,7 +479,7 @@ DISCLAIMER = ("<p>{name} is an independent fan site. It is not affiliated with, 
 
 
 def sport_links(sports, prefix):
-    return "".join('<a href="%s#%s">%s</a>' % (prefix, s["id"], esc(s["name"])) for s in sports)
+    return ('<a class="jump-odds" href="%s#odds">Odds</a>' % prefix) + "".join('<a href="%s#%s">%s</a>' % (prefix, s["id"], esc(s["name"])) for s in sports)
 
 
 def shell(**fields):

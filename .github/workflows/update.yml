@@ -26,6 +26,8 @@ jobs:
           python-version: "3.12"
       - name: Pull headlines and build the page
         run: python3 build.py
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}   # for The Lines; without it the board is simply empty
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public

@@ -45,8 +45,8 @@
   </defs>
 </svg>
 
-<header class="masthead">
-  <div class="masthead-sign">
+<header class="top">
+  <div class="top-inner">
     <h1 class="wordmark" aria-label="{{name}}"><a class="wordmark-link" href="{{home}}" aria-hidden="true" tabindex="-1"><span class="word">R<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>LL</span> <span class="word">C<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>RN</span></a></h1>
     <p class="tagline">{{tagline}}</p>
     {{aside}}
@@ -57,7 +57,7 @@
   <div class="jump-inner">
     <a class="jump-home" href="{{home}}" aria-label="{{home_label}}"><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></a>
     <div class="jump-sports">{{nav}}</div>
-    <a class="jump-merch" href="hang-time.html"{{game_current}}>Play</a>
+    <a class="jump-merch jump-play" href="hang-time.html"{{game_current}}>Play</a>
     <a class="jump-merch" href="merch.html"{{merch_current}}>Merch</a>
   </div>
 </nav>
@@ -107,6 +107,41 @@
   setTimeout(function () {
     try { localStorage.setItem("rollcorn-last-visit", String(Date.now())); } catch (e) {}
   }, 4000);
+})();
+</script>
+<script>
+// Game times in the reader's own time zone.
+(function () {
+  if (!window.Intl) return;
+  var day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+  var hour = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  document.querySelectorAll("[data-kick]").forEach(function (el) {
+    var d = new Date(el.getAttribute("data-kick"));
+    if (!isNaN(d)) el.textContent = day.format(d) + " \u00B7 " + hour.format(d);
+  });
+})();
+</script>
+<script>
+// The sport bar shows where the reader is: the section in view is lit, and kept in sight in the bar.
+(function () {
+  if (!("IntersectionObserver" in window)) return;
+  var links = {}, bar = document.querySelector(".jump-sports");
+  document.querySelectorAll(".jump-sports a").forEach(function (a) {
+    var id = (a.getAttribute("href") || "").split("#")[1];
+    if (id && a.getAttribute("href").charAt(0) === "#") links[id] = a;
+  });
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+    var here = "";
+    Object.keys(links).forEach(function (id) { if (seen[id] && !here) here = id; });
+    Object.keys(links).forEach(function (id) { links[id].classList.toggle("is-here", id === here); });
+    if (here && bar) {
+      var a = links[here], left = a.offsetLeft - bar.offsetLeft;
+      if (left < bar.scrollLeft || left + a.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollTo({ left: Math.max(0, left - 24), behavior: "smooth" });
+    }
+  }, { rootMargin: "-25% 0px -60% 0px" });
+  Object.keys(links).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
 })();
 </script>
 <script>

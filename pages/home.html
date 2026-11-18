@@ -1,4 +1,9 @@
 <main>
+  <div class="ticker" aria-label="Latest headlines">
+    <span class="ticker-tag">Just in</span>
+    <div class="ticker-view"><div class="ticker-track">{{ticker}}</div></div>
+  </div>
+
   <section class="latest" id="latest" aria-labelledby="h-latest">
     <h2 class="sign" id="h-latest">Latest</h2>
     <div class="latest-body">
@@ -7,11 +12,18 @@
         <ul class="runners">{{runners}}</ul>
       </div>
       <div class="justin">
-        <h3 class="justin-title">Just in</h3>
+        <h3 class="justin-title">Top headlines</h3>
         <ol class="briefs">{{latest}}</ol>
       </div>
     </div>
   </section>
+
+  {{odds}}
+
+  <a class="promo" href="hang-time.html">
+    <span class="promo-text"><span class="promo-kicker">Free to play</span><span class="promo-title">Hang Time</span><span class="promo-sub">Punt it, keep it up, spin the corn slots.</span></span>
+    <span class="promo-btn">Play now</span>
+  </a>
 
   <div class="field">
 {{sections}}

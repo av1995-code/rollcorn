@@ -19,6 +19,10 @@
   --slab: "Zilla Slab", Georgia, serif;
   --measure: 36rem;
   --gutter: clamp(1rem, 4vw, 3rem);
+  --go: #2FB344;        /* the green of a button that starts something */
+  --hot: #D62828;       /* breaking, live, just in */
+  --page: #F1F1EC;      /* behind the cards */
+  --card: 0 1px 2px rgba(0, 0, 0, .08), 0 4px 14px rgba(0, 0, 0, .05);
   color-scheme: light;   /* white page for everyone, whatever the device theme */
 }
 
@@ -64,30 +68,24 @@ a:focus-visible {
 }
 .skip:focus { left: var(--gutter); top: .5rem; z-index: 10; }
 
-/* ---------- masthead: the big sign ---------- */
+/* ---------- the top bar: the name, small and loud, on black ---------- */
 
-.masthead {
-  background: var(--gold);
-  color: var(--sign-text);
-  padding: clamp(.6rem, 1.5vw, 1rem);
-}
-.masthead-sign {
-  border: clamp(4px, .7vw, 9px) solid var(--sign-text);
-  border-radius: clamp(10px, 1.6vw, 22px);
-  padding: clamp(1rem, 3vw, 2rem) var(--gutter) clamp(.9rem, 2vw, 1.4rem);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  column-gap: 2rem;
+.top { background: #000; color: #fff; }
+.top-inner {
+  display: flex;
+  align-items: center;
+  gap: clamp(.75rem, 2vw, 1.5rem);
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: .7rem var(--gutter) .55rem;
 }
 .wordmark {
   font-family: var(--display);
-  grid-column: 1 / -1;
   margin: 0;
+  color: var(--gold);
   font-weight: 700;
-  font-size: clamp(3.6rem, 16.4vw, 15rem);
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
   line-height: .95;
-  letter-spacing: 0;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -99,15 +97,15 @@ a:focus-visible {
   transform: rotate(var(--roll, 0deg));
 }
 .wordmark .ear {
-  width: .96em;
-  height: .96em;
+  width: .94em;
+  height: .94em;
   margin: 0 -.01em;
-  vertical-align: -.055em;
+  vertical-align: -.07em;
   animation: roll-in 1.2s cubic-bezier(.2, .7, .2, 1) backwards;
 }
 .wordmark-link { color: inherit; text-decoration: none; }
 .wordmark .word { display: inline-block; }
-.wordmark .word + .word { margin-left: .16em; }
+.wordmark .word + .word { margin-left: .14em; }
 .wordmark .word + .word .ear { animation-delay: .12s; }
 @keyframes roll-in {
   from { transform: rotate(-270deg); }
@@ -117,43 +115,41 @@ a:focus-visible {
   .wordmark .ear { animation: none; }
 }
 .tagline {
-  font-family: var(--slab);
-  margin: clamp(.8rem, 2vw, 1.4rem) 0 0;
-  font-size: clamp(1rem, 1.7vw, 1.3rem);
-  font-weight: 500;
-  max-width: 30ch;
-  line-height: 1.25;
+  font-family: var(--condensed);
+  margin: 0;
+  padding-left: clamp(.75rem, 2vw, 1.5rem);
+  border-left: 2px solid #3A3A3A;
+  color: #C9C9BF;
+  font-size: .95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: 20ch;
+  text-transform: uppercase;
+  letter-spacing: .03em;
 }
 .updated {
-  margin: 0;
-  font-size: .9rem;
-  font-weight: 500;
-  text-align: right;
+  font-family: var(--condensed);
+  margin: 0 0 0 auto;
+  color: #C9C9BF;
+  font-size: .85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
 }
-
-/* wide screens: the name on the left, the details stacked at the right edge,
-   so the sign stays a band and the headlines start higher */
-@media (min-width: 62rem) {
-  .masthead-sign {
-    grid-template-columns: auto 1fr;
-    grid-template-rows: 1fr auto;
-    column-gap: 3rem;
-  }
-  .wordmark {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    font-size: clamp(7rem, 11.4vw, 11.5rem);
-  }
-  .tagline {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: end;
-    justify-self: end;
-    text-align: right;
-    max-width: 22ch;
-  }
-  .updated { grid-column: 2; grid-row: 2; margin-top: .5rem; }
+.updated::before {            /* a live light */
+  content: "";
+  display: inline-block;
+  width: .6em; height: .6em;
+  margin-right: .5em;
+  border-radius: 50%;
+  background: var(--go);
+  box-shadow: 0 0 0 0 rgba(47, 179, 68, .7);
+  animation: live 2s infinite;
 }
+@keyframes live { 70% { box-shadow: 0 0 0 .5em rgba(47, 179, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(47, 179, 68, 0); } }
+@media (prefers-reduced-motion: reduce) { .updated::before { animation: none; } }
+@media (max-width: 40rem) { .tagline { display: none; } }
 
 /* ---------- sport jump bar ---------- */
 
@@ -612,11 +608,260 @@ main {
 .foot p { max-width: 68ch; margin: 0 0 .6rem; }
 
 @media (max-width: 34rem) {
-  /* on a phone the two words stack, so each can be large */
-  .wordmark { font-size: clamp(4.2rem, 32vw, 8.4rem); line-height: 1; }
-  .wordmark .word { display: block; }
-  .wordmark .word + .word { margin-left: 0; }
-  .masthead-sign { grid-template-columns: 1fr; }
-  .updated { text-align: left; margin-top: .5rem; }
   .latest-body, .plot-body, .quiet, .merch-body, .cc-body { margin-left: .5rem; padding-left: 1rem; }
 }
+
+
+/* ==========================================================================
+   The sports-desk look: a black bar, a running line of headlines, a top story
+   on black, and every sport in its own card.
+   ========================================================================== */
+
+body { background: var(--page); }
+
+/* ---------- the sport bar ---------- */
+
+.jump { background: #111; border-top: 1px solid #2A2A2A; border-bottom: 3px solid var(--gold); }
+.jump-sports a {
+  color: #D8D8D0;
+  font-size: .95rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: .85rem 0 .6rem;
+  transition: color .15s;
+}
+.jump-sports a:hover, .jump-sports a.is-here { color: #fff; border-bottom-color: var(--gold); }
+.jump-merch { background: none; color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold); transition: background .15s, color .15s, transform .15s; }
+.jump-merch:hover, .jump-merch[aria-current="page"] { background: var(--gold); color: #000; }
+.jump-play { background: var(--go); color: #000; box-shadow: none; }
+.jump-play:hover, .jump-play[aria-current="page"] { background: #fff; color: #000; }
+.jump-merch:active { transform: scale(.96); }
+
+main { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
+
+/* ---------- the running line ---------- */
+
+.ticker {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: clamp(1rem, 2vw, 1.5rem);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  box-shadow: var(--card);
+}
+.ticker-tag {
+  font-family: var(--condensed);
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 .9rem;
+  background: var(--hot);
+  font-weight: 700;
+  font-size: .9rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.ticker-view {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 2.5rem), transparent);
+}
+.ticker-track { display: inline-flex; white-space: nowrap; animation: ticker 70s linear infinite; }
+.ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
+.ticker-run { display: inline-flex; }
+.ticker a { padding: .62rem 1.5rem; font-size: .95rem; font-weight: 500; text-decoration: none; }
+.ticker a:hover { text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: .2em; }
+.ticker a b { font-family: var(--condensed); margin-right: .6em; color: var(--gold); text-transform: uppercase; letter-spacing: .04em; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .ticker-view { overflow-x: auto; }
+}
+
+/* ---------- the top of the page: one story on black, and the headline list ---------- */
+
+.latest { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
+.latest > .sign { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.latest-body { margin: 0; padding: 0; border: 0; gap: clamp(1rem, 2vw, 1.5rem); }
+.latest-main { display: grid; gap: clamp(1rem, 2vw, 1.5rem); }
+
+.lead {
+  position: relative;
+  max-width: none;
+  min-height: clamp(15rem, 34vw, 25rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  border-radius: 12px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    linear-gradient(115deg, transparent 0 62%, rgba(255, 205, 0, .95) 62% 64.5%, transparent 64.5% 67%, rgba(255, 205, 0, .5) 67% 68.2%, transparent 68.2%),
+    radial-gradient(120% 90% at 100% 0%, #3A3200 0%, transparent 60%),
+    #0A0A0A;
+  box-shadow: var(--card);
+  font-size: clamp(2rem, 4.6vw, 4rem);
+}
+.lead::before {
+  content: "Top story";
+  font-family: var(--condensed);
+  align-self: flex-start;
+  margin-bottom: auto;
+  padding: .3em .7em .25em;
+  border-radius: 4px;
+  background: var(--gold);
+  color: #000;
+  font-size: .95rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.lead a { max-width: 17em; margin-top: 1.5rem; text-shadow: 0 2px 18px rgba(0, 0, 0, .7); }
+.lead a:visited { color: #E9E9E2; }
+.lead a::after { content: ""; position: absolute; inset: 0; }        /* the whole card is the link */
+.lead .from { color: #C9C9BF; }
+.lead .source { color: var(--gold); }
+
+.runners { margin: 0; padding: 0; border: 0; gap: clamp(.75rem, 1.5vw, 1.25rem); }
+.runners .story, .stories .story { position: relative; }
+.runners .story {
+  padding: .95rem 1rem .9rem;
+  border: 0;
+  border-top: 4px solid #000;
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: var(--card);
+  transition: transform .15s, border-color .15s;
+}
+.runners .story:hover { transform: translateY(-3px); border-top-color: var(--gold); }
+.runners .story a::after { content: ""; position: absolute; inset: 0; }
+
+.justin { border-radius: 12px; overflow: hidden; background: var(--paper); box-shadow: var(--card); }
+.justin-title {
+  font-family: var(--condensed);
+  padding: .75rem 1rem .65rem;
+  border: 0;
+  border-left: 5px solid var(--gold);
+  background: #000;
+  color: #fff;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.briefs { padding: .2rem 1rem .5rem; }
+.brief:last-child { border-bottom: 0; }
+.brief .when { color: var(--hot); }
+.brief a:hover, .story a:hover { text-decoration-color: var(--gold); }
+
+/* ---------- the game, offered like a sportsbook offers a bet ---------- */
+
+.promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 clamp(1.5rem, 3vw, 2.25rem);
+  padding: 1rem clamp(1rem, 2.5vw, 1.75rem);
+  border-radius: 12px;
+  border-left: 6px solid var(--go);
+  background: linear-gradient(100deg, #0A0A0A 45%, #12331C);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: var(--card);
+  transition: transform .15s;
+}
+.promo:hover { transform: translateY(-2px); }
+.promo-text { display: grid; }
+.promo-kicker { font-family: var(--condensed); color: var(--go); font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.promo-title { font-family: var(--display); font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 700; line-height: 1.05; text-transform: uppercase; }
+.promo-sub { color: #C9C9BF; font-size: .95rem; }
+.promo-btn {
+  font-family: var(--display);
+  flex: none;
+  padding: .5em 1.1em .42em;
+  border-radius: 8px;
+  background: var(--go);
+  color: #000;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.promo:hover .promo-btn { background: #fff; }
+
+/* ---------- every sport in its own card ---------- */
+
+.field { gap: clamp(1rem, 2vw, 1.5rem); }
+.plot { border-radius: 12px; overflow: hidden; background: var(--paper); box-shadow: var(--card); scroll-margin-top: 4.5rem; }
+.plot-head { align-items: center; padding: .7rem 1rem .6rem; background: #000; color: #fff; }
+.plot .sign {
+  padding: 0 0 0 .6rem;
+  border-left: 5px solid var(--gold);
+  border-radius: 0;
+  background: none;
+  color: #fff;
+  font-size: clamp(1.35rem, 2vw, 1.6rem);
+}
+.plot-meta {
+  font-family: var(--condensed);
+  padding: .2rem .65rem .12rem;
+  border-radius: 99px;
+  background: var(--gold);
+  color: #000;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.plot-body, .plot .quiet { margin: 0; padding: 1rem 1rem .5rem; border: 0; }
+.plot .quiet { padding-bottom: 1.1rem; max-width: none; }
+.plot .story { max-width: none; }
+.plot .stories .story { transition: padding-left .15s; }
+.plot .stories .story:hover { padding-left: .5rem; box-shadow: inset 4px 0 0 var(--gold); }
+.plot .stories .story:hover a { text-decoration: none; }
+.is-new .source::before { background: var(--hot); color: #fff; }
+
+.foot { margin-top: clamp(2rem, 4vw, 3rem); }
+
+@media (max-width: 34rem) {
+  .lead { min-height: 13rem; }
+  .promo-btn { width: 100%; text-align: center; }
+}
+
+/* three across under the top story once there is room, one above another before that */
+.runners { grid-template-columns: 1fr; }
+@media (min-width: 40rem) { .runners { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+
+/* ---------- the lines: the board at a sportsbook ---------- */
+
+.odds { margin: 0 0 clamp(1rem, 2vw, 1.5rem); border-radius: 12px; overflow: hidden; background: #101010; color: #fff; box-shadow: var(--card); scroll-margin-top: 4.5rem; }
+.odds-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .2rem 1rem; padding: .7rem 1rem .6rem; background: #000; }
+.odds .sign { padding: 0 0 0 .6rem; border-left: 5px solid var(--go); border-radius: 0; background: none; color: #fff; font-size: clamp(1.35rem, 2vw, 1.6rem); }
+.odds-src { font-family: var(--condensed); margin: 0; color: #B9B9B0; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.odds-src .when { color: inherit; }
+.games { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1px; background: #2A2A2A; }
+.game { padding: .9rem 1rem 1rem; background: #101010; }
+.game-meta { font-family: var(--condensed); display: flex; flex-wrap: wrap; justify-content: space-between; gap: .1rem 1rem; margin: 0 0 .6rem; color: #B9B9B0; font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.game-meta b { color: var(--gold); }
+.lines { width: 100%; border-collapse: separate; border-spacing: .35rem; margin: -.35rem; }
+.lines thead th { font-family: var(--condensed); padding: 0 0 .1rem; color: #8E8E86; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+.lines thead th:first-child { text-align: left; }
+.lines tbody th { font-family: var(--condensed); padding: .2rem .3rem .2rem 0; font-size: 1.15rem; font-weight: 700; text-align: left; line-height: 1.1; }
+.lines .is-iowa th { color: var(--gold); }
+.lines .rank { color: #B9B9B0; font-size: .8em; }
+.lines td { width: 23%; padding: .45rem .3rem .35rem; border-radius: 6px; background: #1E1E1E; text-align: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.lines td b { display: block; font-family: var(--condensed); font-size: 1.05rem; }
+.lines td small { display: block; min-height: 1em; color: var(--go); font-size: .78rem; font-weight: 700; }
+.lines td:last-child b { color: var(--go); padding: .42em 0; }
+.odds-none { margin: 0; padding: 1.1rem 1rem; color: #C9C9BF; }
+.odds-note { margin: 0; padding: .75rem 1rem .85rem; border-top: 1px solid #2A2A2A; color: #8E8E86; font-size: .78rem; line-height: 1.4; }
+.jump-sports a.jump-odds { color: var(--go); }

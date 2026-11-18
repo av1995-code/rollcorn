@@ -580,7 +580,7 @@
       do { c = Math.floor(Math.random() * REEL.length); } while (c === a || c === b);
       order = [[a, b, c], [b, c, a], [c, a, b]][Math.floor(Math.random() * 3)];
       sp.syms = all.charAt(order[0]) + all.charAt(order[1]) + all.charAt(order[2]);
-      sp.text = "NEXT TIME";
+      sp.text = "NO MATCH";
     }
     return sp;
   }
@@ -656,7 +656,7 @@
         if (r.corn) { bank += r.corn; earned += r.corn; ui.tally = (ui.tally || 0) + r.corn; }
         if (r.gold) { spins += 1; ui.goldNext = true; }
         if (r.boost) { if (!pocket) pocket = "BSPTUH".charAt(Math.floor(Math.random() * 6)); else spins += 2; }
-        ui.reward = "HARVEST:  " + (r.boost && ui.reward !== undefined && pocket ? POWERS[pocket] : r.text); ui.rewardNow = now;
+        ui.reward = "REWARD:  " + (r.boost && ui.reward !== undefined && pocket ? POWERS[pocket] : r.text); ui.rewardNow = now;
         slotSfx.boost(); popcorn(14, 0.7);
         if (i === HARVEST.length - 1) { hvLevel += 1; hvPts = 0; }
       }
@@ -722,7 +722,7 @@
   var away = false, awayAt = -9;
   function putAway() {
     slotWrapUp();
-    away = true; awayAt = now;
+    away = true; awayAt = now; ui.auto = false;
     tone(300, 0.14, "sine", 0.06, 160);
     label("Punt");
     say("Back to the field. Tap when the arrow is on the gold to punt." + (spins > 0 ? " Your " + spins + (spins === 1 ? " spin is" : " spins are") + " saved." : ""));
@@ -737,7 +737,7 @@
     spinBtn.textContent = ui.state === "kick" ? "Kick!" : turning ? "Stop the reel" : "Spin" + (Math.min(ui.bet, spins) > 1 ? " x" + Math.min(ui.bet, spins) : "") + " (" + spins + " left)";
     keepBtn.hidden = doubleBtn.hidden = !(show && choosing);
     keepBtn.textContent = "Keep " + ui.pend + " corn";
-    doubleBtn.textContent = ui.state === "pair" ? "Respin the odd reel" : "Double or nothing";
+    doubleBtn.textContent = ui.state === "pair" ? "Try for three of a kind" : "Double or nothing";
   }
   function pull() {
     if (spins <= 0) return;
@@ -754,7 +754,7 @@
     var tease = ui.sp.syms.charAt(0) === ui.sp.syms.charAt(1);        // two the same: the last reel takes its time
     ui.t = 0; ui.stopped = 0; ui.state = "spinning"; ui.tease = tease;
     ui.pullNow = now; ui.stopNow = [0, 0, 0];
-    ui.stopAt = [0.7, 1.15, 1.6 + (tease ? 0.8 : 0)];
+    ui.stopAt = ui.auto ? [0.3, 0.5, 0.7 + (tease ? 0.6 : 0)] : [0.7, 1.15, 1.6 + (tease ? 0.8 : 0)];
     save("rollcorn-hang-spins", spins); save("rollcorn-hang-pot", pot);
     slotSfx.lever();
     say("The reels are spinning. Tap the machine to stop them.");
@@ -768,6 +768,13 @@
     ui.msg = sp.text;
     harvestAdd((sp.big ? 150 : sp.pay + boostValue(sp)) * (sp.pay > 0 || sp.big ? 1 : ui.betNow || 1));
     dry = sp.big || sp.pay > 0 || boostValue(sp) ? 0 : dry + 1;
+    ui.streak = dry ? 0 : (ui.streak || 0) + 1;
+    if (ui.streak === 2) { ui.reward = "2 WINS IN A ROW"; ui.rewardNow = now; }
+    if (ui.streak >= 3) {
+      ui.streak = 0; spins += 1; save("rollcorn-hang-spins", spins);
+      ui.reward = "3 IN A ROW:  +1 SPIN"; ui.rewardNow = now;
+      popcorn(12, 0.6);
+    }
     if (sp.big) popcorn(80, 2.4);
     else if (sp.syms.charAt(0) === sp.syms.charAt(1) && sp.syms.charAt(1) === sp.syms.charAt(2)) popcorn(24, 1.0);
     var won = sp.helmet ? "H" : sp.superPunt ? "S" : sp.blockers ? "B" : sp.magnet ? "P" : sp.wide ? "U" : sp.wind ? "T" : "";
@@ -826,7 +833,7 @@
       betScale(sp);
       settle();
     } else {
-      sp.text = "NO MATCH.  NEXT TIME"; ui.msg = sp.text; ui.winNow = -9;
+      sp.text = "NO MATCH"; ui.msg = sp.text; ui.winNow = -9;
       ui.state = "idle";
       slotSfx.gone();
       say("No match this time.");
@@ -884,7 +891,7 @@
     } else {
       k = Math.floor(Math.random() * REEL.length);                    // three different symbols: plainly a miss
       ui.sp.syms = REEL.charAt(k) + REEL.charAt((k + 2) % REEL.length) + REEL.charAt((k + 4) % REEL.length);
-      ui.msg = "GONE.  NEXT TIME";
+      ui.msg = "GONE";
       ui.pend = 0; ui.state = "idle";
       slotSfx.gone();
       say("Nothing this time.");
@@ -911,6 +918,11 @@
     else pull();
   }
   function slotTick(dt) {
+    if (ui.auto) {
+      if (!slotVisible() || (ui.state === "idle" && spins <= 0)) ui.auto = false;
+      else if (ui.state === "idle") { ui.autoT = (ui.autoT || 0) + dt; if (ui.autoT > 0.6) { ui.autoT = 0; pull(); } }
+      else if (ui.state === "pair" || ui.state === "double") { ui.autoT = (ui.autoT || 0) + dt; if (ui.autoT > 1.0) { ui.autoT = 0; keep(); } }
+    }
     if (ui.state === "respin" || ui.state === "flip" || ui.state === "spinning") {
       ui.pos = ui.pos || [0, 0, 0];
       for (var ri = 0; ri < 3; ri++) {                     // each reel eases down over its last third of a second
@@ -1202,6 +1214,16 @@
     downY = e.clientY; pressed = true;
     var box = canvas.getBoundingClientRect(), px = (e.clientX - box.left) / U, py = (e.clientY - box.top) / U;
     if (slotVisible() && px > VW / 2 - PANEL.w / 2 && px < VW / 2 + PANEL.w / 2 + 34 && py > PANEL.y && py < PANEL.y + PANEL.h) {
+      if (ui.auto) { ui.auto = false; tone(300, 0.08, "sine", 0.06); board(); return; }      // any tap ends an auto run
+      if (ui.state === "idle" && spins > 0 && px > VW / 2 + PANEL.w / 2 - 6 && py > PANEL.y + 40 && py < PANEL.y + 150) {
+        ui.grab = true; ui.grabY = py; ui.lever = 0; lastInput = now;                        // a hand on the lever
+        return;
+      }
+      if (ui.state === "idle" && spins > 1 && px > VW / 2 + PANEL.w / 2 - 62 && px < VW / 2 + PANEL.w / 2 - 6 && py > PANEL.y + 147 && py < PANEL.y + 185) {
+        ui.auto = true; ui.autoT = 0.4; lastInput = now;
+        tone(700, 0.07, "triangle", 0.08); tone(1050, 0.1, "triangle", 0.08, 0, 0.07);
+        return;
+      }
       if (ui.state === "idle" && spins > 1 && px < VW / 2 - PANEL.w / 2 + 64 && py > PANEL.y + 147 && py < PANEL.y + 185) {
         ui.bet = ui.bet % Math.min(3, spins) + 1;                 // one, two, three, and round again
         tone(500 + ui.bet * 140, 0.06, "triangle", 0.08); board();
@@ -1216,10 +1238,18 @@
   btn.addEventListener("pointerdown", function () { held = true; });
   btn.addEventListener("click", tap);
   var downY = 0, pressed = false;
-  window.addEventListener("pointerup", function () { held = false; diving = false; pressed = false; });
+  window.addEventListener("pointerup", function () {
+    held = false; diving = false; pressed = false;
+    if (ui.grab) {                                         // let go: a full pull spins, a tap spins, a half-hearted tug springs back
+      ui.grab = false;
+      if (ui.lever > 0.55 || ui.lever < 0.08) pull(); else tone(240, 0.08, "sine", 0.05);
+      ui.lever = 0;
+    }
+  });
   window.addEventListener("pointercancel", function () { held = false; diving = false; pressed = false; });
   canvas.addEventListener("pointermove", function (e) {                 // press and drag down to dive
     if (pressed && S.phase === "play" && e.clientY - downY > 34) { diving = true; held = false; }
+    if (ui.grab) { var bx2 = canvas.getBoundingClientRect(); ui.lever = clamp(((e.clientY - bx2.top) / U - ui.grabY) / 50, 0, 1); }
   });
   window.addEventListener("blur", function () { held = false; });
   document.addEventListener("keyup", function (e) {
@@ -1259,6 +1289,7 @@
   // ---------- particles ----------
 
   function burst(x, y, n) {            // kernels fly up and pop into popcorn
+    if (S.phase === "play") n = Math.ceil(n * 0.5);       // fewer while the ball is in the air
     for (var i = 0; i < n; i++) {
       var a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, v = 120 + Math.random() * 260;
       particles.push({ kind: "kernel", x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
@@ -2219,6 +2250,20 @@
     }
   }
 
+  function slotLine() {
+    var sp = ui.sp, st = ui.state, jack = "JACKPOT " + Math.floor(pot).toLocaleString("en-US") + " CORN";
+    if (st === "spinning") return "MATCH 3 TO WIN";
+    if (st === "respin") return "ONE REEL SPINS: MATCH IT FOR 3 OF A KIND";
+    if (st === "flip") return "DOUBLE, OR NOTHING...";
+    if (st === "kick") return "BONUS KICK: UP TO " + KICK.perfect * (ui.betNow || 1) + " CORN";
+    if (st === "pair") return "PAIR: KEEP " + ui.pend + " CORN, OR TRY FOR 3 OF A KIND";
+    if (st === "double") return (ui.msg === "DOUBLED" ? "NOW " : "YOU WON ") + ui.pend + " CORN: KEEP, OR FLIP FOR " + ui.pend * 2;
+    if (ui.daily && ui.msg) return ui.msg;
+    if (sp) return ui.msg + (/NO MATCH|GONE/.test(ui.msg) ? "  \u00B7  " + jack : "");
+    var show = SHOW.charAt(Math.floor(now / 1.7) % SHOW.length);                  // nothing spun yet: the prize list
+    return show === "C" ? "3 OF THESE:  " + jack : "3 OF THESE:  " + PRIZE[show];
+  }
+
   // the pocket: what is held, and how to use it
   function pocketAt() { return { x: VW - 34, y: 80 }; }
   function pocketDraw() {
@@ -2288,8 +2333,7 @@
     }
     ctx.textAlign = "center";
     ctx.fillStyle = GOLD; ctx.font = "700 12px " + LABEL;
-    var showing = !sp && ui.state === "idle" ? SHOW.charAt(Math.floor(now / 1.7) % SHOW.length) : "";
-    ctx.fillText(showing && showing !== "C" ? "THREE OF THESE:  " + PRIZE[showing] : "JACKPOT  " + Math.floor(pot).toLocaleString("en-US") + " CORN", VW / 2, y + 47, w - 20);
+    ctx.fillText(slotLine(), VW / 2, y + 47, w - 20);
     var winTop = y + 56, winH = 86, mid = winTop + winH / 2, strip = REEL, row = 38;   // the rows above and below peek in
     for (i = 0; i < 3; i++) {
       var cx = VW / 2 + (i - 1) * 76, spinning = (ui.state === "spinning" && i >= ui.stopped) || (ui.state === "respin" && sp && i === sp.odd) || ui.state === "flip";
@@ -2341,7 +2385,7 @@
       ctx.beginPath(); ctx.arc(lx, ly, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
     // the lever: it comes down on a pull and springs back
-    var pulled = clamp((now - (ui.pullNow || -9)) / 0.45, 0, 1), down = Math.sin(Math.PI * pulled);
+    var pulled = clamp((now - (ui.pullNow || -9)) / 0.45, 0, 1), down = ui.grab ? ui.lever : Math.sin(Math.PI * pulled);
     var hx = x + w + 3, hy = mid + 22, kx = hx + 18, ky = mid - 34 + down * 50;
     ctx.fillStyle = "#333"; ctx.strokeStyle = INK; ctx.lineWidth = 2;
     rr(x + w - 2, hy - 9, 12, 18, 3); ctx.fill(); ctx.stroke();
@@ -2359,7 +2403,7 @@
       ctx.fillStyle = GOLD; rr(VW / 2 + 5, by, w / 2 - 15, bh, 7); ctx.fill(); ctx.stroke();
       ctx.fillStyle = INK; ctx.font = "700 15px " + LABEL;
       ctx.fillText("KEEP  +" + ui.pend + " CORN", x + 10 + (w / 2 - 15) / 2, by + bh / 2 + 1, w / 2 - 24);
-      ctx.fillText(ui.state === "pair" ? "RESPIN ODD REEL" : "DOUBLE OR NOTHING", VW / 2 + 5 + (w / 2 - 15) / 2, by + bh / 2 + 1, w / 2 - 24);
+      ctx.fillText(ui.state === "pair" ? "TRY FOR 3" : "DOUBLE OR NOTHING", VW / 2 + 5 + (w / 2 - 15) / 2, by + bh / 2 + 1, w / 2 - 24);
     } else if (ui.state === "kick") {                                          // the bonus kick: a gauge to time
       var kg = kickGauge(), kx0 = x + 14, kw = w - 28;
       ctx.fillStyle = "#3A3A3A"; ctx.strokeStyle = INK; ctx.lineWidth = 2.5; rr(kx0, by + 4, kw, bh - 12, 7); ctx.fill(); ctx.stroke();
@@ -2373,26 +2417,39 @@
       ctx.beginPath(); ctx.moveTo(kmx - 8, by + bh + 3); ctx.lineTo(kmx, by + bh - 11); ctx.lineTo(kmx + 8, by + bh + 3); ctx.closePath(); ctx.fill(); ctx.stroke();
     } else if (ui.state === "spinning" || ui.state === "respin" || ui.state === "flip") {
       ctx.fillStyle = "#B9B5A5"; ctx.font = "700 15px " + LABEL;
-      ctx.fillText("TAP TO STOP", VW / 2, by + bh / 2);
+      ctx.fillText(ui.auto ? "AUTO  \u00B7  TAP TO STOP IT" : "TAP TO STOP", VW / 2, by + bh / 2);
     } else if (spins > 0) {
       var pulse = 0.5 + 0.5 * Math.sin(now * 5);
       ctx.fillStyle = mix("#E0B400", "#FFE45C", pulse); ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
-      rr(x + 66, by, w - 76, bh, 7); ctx.fill(); ctx.stroke();
+      var sw2 = spins > 1 ? w - 76 - 56 : w - 76;                                  // room for the AUTO chip when there are spins to run through
+      rr(x + 66, by, sw2, bh, 7); ctx.fill(); ctx.stroke();
       ctx.fillStyle = INK; ctx.font = "700 15px " + LABEL;
-      ctx.fillText((ui.msg && (ui.sp || ui.daily) ? ui.msg + "  ·  " : "") + (ui.goldNext ? "GOLDEN SPIN  (" : "TAP TO SPIN  (") + spins + ")", x + 66 + (w - 76) / 2, by + bh / 2 + 1, w - 90);
+      ctx.fillText(ui.auto ? "AUTO  (" + spins + ")" : (ui.goldNext ? "GOLDEN SPIN" : "SPIN") + "  (" + spins + " LEFT)", x + 66 + sw2 / 2, by + bh / 2 + 1, sw2 - 12);
+      if (spins > 1) {
+        ctx.fillStyle = ui.auto ? "#fff" : "#2A2A2A"; ctx.strokeStyle = ui.auto ? INK : GOLD; ctx.lineWidth = 2.5;
+        rr(x + w - 60, by, 50, bh, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ui.auto ? INK : GOLD; ctx.font = "700 14px " + DISPLAY;
+        ctx.fillText(ui.auto ? "STOP" : "AUTO", x + w - 35, by + bh / 2 + 1);
+      }
       var bet = Math.max(1, Math.min(ui.bet, spins));                              // the stake chip: tap it to play two or three spins at once
       ctx.fillStyle = bet > 1 ? "#fff" : "#2A2A2A"; ctx.strokeStyle = bet > 1 ? INK : GOLD; ctx.lineWidth = 2.5;
       rr(x + 10, by, 50, bh, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = bet > 1 ? INK : GOLD; ctx.font = "700 17px " + DISPLAY;
-      ctx.fillText("X" + bet, x + 35, by + bh / 2 + 1);
+      ctx.fillStyle = bet > 1 ? INK : GOLD; ctx.font = "700 8px " + LABEL;
+      ctx.fillText("BET", x + 35, by + 8);
+      ctx.font = "700 15px " + DISPLAY;
+      ctx.fillText(bet + (bet === 1 ? " SPIN" : " SPINS"), x + 35, by + 20.5, 44);
     } else {
       ctx.fillStyle = won ? GOLD : "#B9B5A5"; ctx.font = "700 15px " + LABEL;
       ctx.fillText((refillText() && !ui.tally && !pocket ? refillText() : ui.tally ? "THIS ROUND  +" + ui.tally + " CORN" + (pocket ? " AND " + POWERS[pocket] : "") : pocket ? POWERS[pocket] + " READY" : ui.msg) + "  \u00B7  TAP TO PUNT", VW / 2, by + bh / 2, w - 24);
     }
     // the harvest track along the foot: five rewards, and the next one named
     var hn = hvNext(), top = hvAt(HARVEST.length - 1), hx = x + 66, hw = w - 76 - 78, fresh = now - (ui.rewardNow || -9) < 2.6;
+    if (fresh) {                                           // a reward just landed: the row says so, and nothing else
+      ctx.font = "700 12px " + LABEL; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+      ctx.fillStyle = Math.sin(now * 14) > 0 ? "#fff" : GOLD; ctx.fillText(ui.reward, VW / 2, y + 193, w - 24);
+    } else {
     ctx.font = "700 10px " + LABEL; ctx.textBaseline = "middle"; ctx.textAlign = "left";
-    ctx.fillStyle = "#B9B5A5"; ctx.fillText("HARVEST", x + 12, y + 193, 50);
+    ctx.fillStyle = "#B9B5A5"; ctx.fillText("REWARDS", x + 12, y + 193, 50);
     ctx.fillStyle = "#3A3A3A"; rr(hx, y + 189, hw, 8, 4); ctx.fill();
     ctx.fillStyle = fresh && Math.sin(now * 16) > 0 ? "#fff" : GOLD; rr(hx, y + 189, Math.max(4, hw * clamp(hvPts / top, 0, 1)), 8, 4); ctx.fill();
     for (var hm2 = 0; hm2 < HARVEST.length; hm2++) {
@@ -2400,7 +2457,8 @@
       ctx.beginPath(); ctx.arc(hx + hw * hvAt(hm2) / top, y + 193, 3.2, 0, Math.PI * 2); ctx.fill();
     }
     ctx.textAlign = "right"; ctx.fillStyle = fresh ? "#fff" : GOLD;
-    ctx.fillText(fresh ? ui.reward : "NEXT: " + HARVEST[hn].text, x + w - 12, y + 193, 74);
+    ctx.fillText("NEXT: " + HARVEST[hn].text, x + w - 12, y + 193, 74);
+    }
     ctx.textAlign = "center";
   }
 
@@ -2612,19 +2670,21 @@
     for (i = 0; i < particles.length; i++) {
       var pt = particles[i], fade = 1 - pt.life / pt.max;
       if (pt.life < 0) continue;
+      // while the ball is up, anything near it goes faint, so the ball is never lost in the popcorn
+      var clear = S.phase === "play" ? clamp((Math.sqrt((pt.x - BX) * (pt.x - BX) + (pt.y - S.y) * (pt.y - S.y)) - 40) / 90, 0.12, 1) : 1;
       if (pt.kind === "fw") {
-        ctx.fillStyle = pt.col; ctx.globalAlpha = clamp(fade * 1.6, 0, 1);
+        ctx.fillStyle = pt.col; ctx.globalAlpha = clamp(fade * 1.6, 0, 1) * clear;
         ctx.beginPath(); ctx.arc(pt.x, pt.y, Math.max(0.1, pt.size * (0.6 + fade * 0.6)), 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
       } else if (pt.kind === "dust" || pt.kind === "puff") {
-        ctx.fillStyle = "rgba(255,252,235," + (fade * 0.8).toFixed(2) + ")";
+        ctx.fillStyle = "rgba(255,252,235," + (fade * 0.8 * clear).toFixed(2) + ")";
         ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size * (1.4 - fade * 0.4), 0, Math.PI * 2); ctx.fill();
       } else if (pt.life < pt.pop) {
-        ctx.save(); ctx.translate(pt.x, pt.y); ctx.rotate(pt.rot + pt.life * 12);
+        ctx.save(); ctx.globalAlpha = clear; ctx.translate(pt.x, pt.y); ctx.rotate(pt.rot + pt.life * 12);
         kernel(pt.size / 6.5);
         ctx.restore();
       } else {
-        ctx.globalAlpha = clamp(fade * 3, 0, 1);
+        ctx.globalAlpha = clamp(fade * 3, 0, 1) * clear;
         ctx.fillStyle = "#FFFBEA"; ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 1;
         for (var pb = 0; pb < 3; pb++) {
           ctx.beginPath();
