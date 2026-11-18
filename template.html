@@ -50,6 +50,7 @@
     <h1 class="wordmark" aria-label="{{name}}"><a class="wordmark-link" href="{{home}}" aria-hidden="true" tabindex="-1"><span class="word">R<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>LL</span> <span class="word">C<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>RN</span></a></h1>
     <p class="tagline">{{tagline}}</p>
     {{aside}}
+    {{search}}
   </div>
 </header>
 
@@ -63,6 +64,8 @@
 </nav>
 
 {{main}}
+
+<a class="totop" href="#top" aria-label="Back to top">Top</a>
 
 <footer class="foot">
 {{footer}}
@@ -107,6 +110,50 @@
   setTimeout(function () {
     try { localStorage.setItem("rollcorn-last-visit", String(Date.now())); } catch (e) {}
   }, 4000);
+})();
+</script>
+<script>
+// Finding things: a sport filter on the headline list, "show more" in each sport, and a search across the page.
+(function () {
+  var briefs = [].slice.call(document.querySelectorAll(".brief")), chips = [].slice.call(document.querySelectorAll(".chip")), sport = "";
+  function list() {                                   // ten headlines, from the chosen sport
+    var n = 0;
+    briefs.forEach(function (b) { b.hidden = !((!sport || b.getAttribute("data-sport") === sport) && n++ < 10); });
+  }
+  chips.forEach(function (c) {
+    c.addEventListener("click", function () {
+      sport = c.getAttribute("data-sport");
+      chips.forEach(function (o) { var on = o === c; o.classList.toggle("is-on", on); o.setAttribute("aria-pressed", on ? "true" : "false"); });
+      list();
+    });
+  });
+  document.querySelectorAll(".more-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      btn.parentNode.querySelectorAll("[data-more]").forEach(function (el) { el.hidden = false; });
+      btn.remove();
+    });
+  });
+  var q = document.getElementById("q"), status = document.getElementById("search-status");
+  if (q) {
+    var all = [].slice.call(document.querySelectorAll("main .story, main .brief"));
+    all.forEach(function (el) { el.setAttribute("data-was", el.hidden ? "1" : ""); });
+    q.addEventListener("input", function () {
+      var term = q.value.trim().toLowerCase(), hits = 0, seen = {};
+      document.body.classList.toggle("is-searching", !!term);
+      all.forEach(function (el) {
+        if (!term) { el.hidden = !!el.getAttribute("data-was"); return; }
+        var a = el.querySelector("a"), ok = el.textContent.toLowerCase().indexOf(term) >= 0 && a && !seen[a.href] && !el.closest(".justin");
+        if (ok) { seen[a.href] = 1; hits++; }
+        el.hidden = !ok;
+      });
+      document.querySelectorAll(".plot").forEach(function (p) { p.hidden = !!term && !p.querySelector(".story:not([hidden])"); });
+      if (!term) list();
+      status.hidden = !term;
+      status.textContent = term ? (hits ? hits + (hits === 1 ? " headline matches \u201C" : " headlines match \u201C") + q.value.trim() + "\u201D" : "No headlines match \u201C" + q.value.trim() + "\u201D. Try a name or a team.") : "";
+    });
+  }
+  var top = document.querySelector(".totop");
+  if (top) window.addEventListener("scroll", function () { top.classList.toggle("is-up", window.scrollY > 900); }, { passive: true });
 })();
 </script>
 <script>

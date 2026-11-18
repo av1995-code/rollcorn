@@ -253,12 +253,12 @@ def story(it, tag="li", cls="story"):
              src=esc(it["source"]), when=stamp(it["date"]))
 
 
-def brief(it):
+def brief(it, hidden=False):
     """One line of the "just in" timeline: time first, then the headline."""
     return (
-        '<li class="brief">{when}<div><a href="{href}" rel="noopener">{title}</a>'
+        '<li class="brief" data-sport="{sport}"{hidden}>{when}<div><a href="{href}" rel="noopener">{title}</a>'
         '<p class="from"><span class="source">{src}</span></p></div></li>'
-    ).format(href=esc(it["link"]), title=esc(it["title"]),
+    ).format(href=esc(it["link"]), title=esc(it["title"]), sport=esc(it["sport"]), hidden=" hidden" if hidden else "",
              src=esc(it["source"]), when=stamp(it["date"], short=True))
 
 
@@ -358,34 +358,76 @@ def load_odds():
     return sorted((g for g in games if g["when"] > NOW), key=lambda g: g["when"]), checked
 
 
-def odds_section():
-    """The Lines card on the home page. With no lines to show, it says so."""
+def implied(money):
+    """The chance a moneyline implies, before the sportsbook's cut is taken out."""
+    money = float(money)
+    return -money / (-money + 100) if money < 0 else 100 / (money + 100)
+
+
+def odds_parts():
+    """The Lines card for the home page, and the one-line Next up strip that sits above the headlines."""
     games, checked = load_odds()
-    cards = []
+    cards, nextup = [], ""
     for g in games:
         local = g["when"].astimezone(ZoneInfo("America/Chicago"))
         kick = local.strftime("%a, %b ") + str(local.day) + local.strftime(" \u00B7 %I:%M %p CT").replace(" 0", " ")
+        away, home = g["rows"]
+        fav = min(g["rows"], key=lambda r: r["spread"] if r["spread"] is not None else 0)
+        dog = home if fav is away else away
+        if fav["spread"] is None:
+            read = "No spread posted yet"
+        elif fav["spread"] == 0:
+            read = "A pick'em: no favorite"
+        else:
+            read = "%s favored by %g over %s" % (fav["name"], abs(fav["spread"]), dog["name"])
+        total = (away["total"] or "")[2:]
+        if total:
+            read += " \u00B7 %s total points expected" % total
+        prob = ""
+        if away["money"] is not None and home["money"] is not None:
+            a, h = implied(away["money"]), implied(home["money"])
+            pa = round(100 * a / (a + h))
+            prob = ('<div class="prob" role="img" aria-label="{an} {pa}%, {hn} {ph}% to win, as the moneyline implies">'
+                    '<span class="prob-a{ai}" style="width:{pa}%">{pa}%</span><span class="prob-h{hi}">{ph}%</span></div>'
+                    '<p class="prob-key"><span>{an}</span><span>Chance to win, by the moneyline</span><span>{hn}</span></p>').format(
+                        an=esc(away["name"]), hn=esc(home["name"]), pa=pa, ph=100 - pa,
+                        ai=" is-iowa" if away["iowa"] else "", hi=" is-iowa" if home["iowa"] else "")
         body = "".join(
-            '<tr{cls}><th scope="row">{rank}{name}</th>'
+            '<tr{cls}><th scope="row">{name}</th>'
             '<td><b>{spread}</b><small>{sp}</small></td><td><b>{total}</b><small>{tp}</small></td><td><b>{money}</b></td></tr>'.format(
-                cls=' class="is-iowa"' if r["iowa"] else "",
-                rank="", name=esc(r["name"]),
+                cls=' class="is-iowa"' if r["iowa"] else "", name=esc(r["name"]),
                 spread=signed(r["spread"], True), sp=signed(r["spread_price"]) if r["spread_price"] is not None else "",
                 total=esc(r["total"] or "\u2013"), tp=signed(r["total_price"]) if r["total_price"] is not None else "",
                 money=signed(r["money"]))
             for r in g["rows"])
         cards.append(
             '<article class="game"><p class="game-meta"><b>%s</b><span data-kick="%s">%s</span></p>'
+            '<h3 class="matchup"><span%s>%s</span> <i>at</i> <span%s>%s</span></h3><p class="read">%s</p>%s'
             '<table class="lines"><thead><tr><th scope="col">Team</th><th scope="col">Spread</th><th scope="col">Total</th><th scope="col">Money</th></tr></thead>'
-            '<tbody>%s</tbody></table></article>' % (esc(g["sport"]), g["when"].isoformat(), esc(kick), body))
+            '<tbody>%s</tbody></table></article>' % (
+                esc(g["sport"]), g["when"].isoformat(), esc(kick),
+                ' class="is-iowa"' if away["iowa"] else "", esc(away["name"]), ' class="is-iowa"' if home["iowa"] else "", esc(home["name"]),
+                esc(read), prob, body))
+        if not nextup:
+            line = ("%s %s" % (fav["name"], signed(fav["spread"], True))) if fav["spread"] not in (None, 0) else ""
+            nextup = ('<a class="nextup" href="#odds"><b>Next up</b><span class="nextup-game">%s at %s</span>'
+                      '<span data-kick="%s">%s</span>%s%s<span class="nextup-go">The lines</span></a>' % (
+                          esc(away["name"]), esc(home["name"]), g["when"].isoformat(), esc(kick),
+                          '<em>%s</em>' % esc(line) if line else "", '<em>O/U %s</em>' % esc(total) if total else ""))
     book = next((g["book"] for g in games if g["book"]), "")
     source = ("Lines from %s, by way of The Odds API. " % esc(book)) if book else ""
     inner = ('<div class="games">%s</div>' % "".join(cards)) if cards else '<p class="odds-none">No lines are posted for the next week. They show up here a few days before each game.</p>'
-    return ('<section class="odds" id="odds" aria-labelledby="h-odds">'
-            '<header class="odds-head"><h2 class="sign" id="h-odds">The lines</h2><p class="odds-src">Checked %s</p></header>%s'
-            '<p class="odds-note">%sOdds move; check a sportsbook for the current number. {name} takes no bets and is here for information only. '
-            'Betting is for adults 21 and over where it is legal. Gambling problem? Call 1-800-GAMBLER.</p></section>'
-            % (stamp(checked or NOW), inner, source))
+    helper = ('<details class="odds-help"><summary>How to read the lines</summary>'
+              '<dl><dt>Spread</dt><dd>The favorite has to win by more than this number; the underdog can lose by less, or win. Iowa -8.5 means Iowa must win by 9 or more.</dd>'
+              '<dt>Total</dt><dd>Both teams\' points added together. O is over that number, U is under.</dd>'
+              '<dt>Money</dt><dd>A bet on who wins, nothing else. -325 means risking $325 to win $100; +260 means $100 wins $260.</dd>'
+              '<dt>The small green number</dt><dd>The price of that bet, read the same way as the moneyline.</dd></dl></details>') if cards else ""
+    section = ('<section class="odds" id="odds" aria-labelledby="h-odds">'
+               '<header class="odds-head"><h2 class="sign" id="h-odds">The lines</h2><p class="odds-src">Checked %s</p></header>%s%s'
+               '<p class="odds-note">%sOdds move; check a sportsbook for the current number. {name} takes no bets and is here for information only. '
+               'Betting is for adults 21 and over where it is legal. Gambling problem? Call 1-800-GAMBLER.</p></section>'
+               % (stamp(checked or NOW), inner, helper, source))
+    return section, nextup
 
 
 def ticker(items, sports):
@@ -424,7 +466,14 @@ def render(items):
     # top of the page: one lead story, three runners-up beneath it,
     # and the rest as the Just in timeline beside them
     latest = items[: CFG["latest_count"]]
-    lead, runners, rest = latest[0], latest[1:4], latest[4:]
+    lead, runners = latest[0], latest[1:4]
+    rest = items[4:64]                 # the headline list: ten showing, the rest there for the sport filter
+    shown = len(latest) - 4
+    in_list = {it["sport"] for it in rest}
+    chips = '<button class="chip is-on" type="button" data-sport="" aria-pressed="true">All</button>' + "".join(
+        '<button class="chip" type="button" data-sport="%s" aria-pressed="false">%s</button>' % (esc(sp["id"]), esc(sp["name"]))
+        for sp in sports if sp["id"] in in_list)
+    lines_html, nextup = odds_parts()
 
 
     sections = []
@@ -433,11 +482,14 @@ def render(items):
         limit = CFG["per_sport_count"] + (3 if wide else 0)
         all_mine = [it for it in items if it["sport"] == s["id"]]
         mine = all_mine[:limit]
+        extra = all_mine[limit:limit + 15]
         this_week = sum(1 for it in all_mine if it["date"] >= week)
         if mine:
-            body = ('<div class="plot-body">%s<ul class="stories">%s</ul></div>' % (
+            more = "".join(story(it).replace('<li class="story"', '<li class="story" hidden data-more', 1) for it in extra)
+            button = ('<button class="more-btn" type="button">Show %d more</button>' % len(extra)) if extra else ""
+            body = ('<div class="plot-body">%s<ul class="stories">%s%s</ul>%s</div>' % (
                 story(mine[0], "article", "story story-top"),
-                "".join(story(it) for it in mine[1:])))
+                "".join(story(it) for it in mine[1:]), more, button))
             meta = "%d %s this week" % (this_week, "story" if this_week == 1 else "stories")
         else:
             body = ('<p class="quiet">No headlines in the past %d days. '
@@ -453,10 +505,10 @@ def render(items):
     sources = sorted({it["source"] for it in items}, key=str.lower)
     main_html = ((ROOT / "pages" / "home.html").read_text()
                  .replace("{{ticker}}", ticker(latest[:10], sports))
-                 .replace("{{odds}}", odds_section())
+                 .replace("{{odds}}", lines_html).replace("{{nextup}}", nextup).replace("{{chips}}", chips)
                  .replace("{{lead}}", story(lead, "article", "story lead"))
                  .replace("{{runners}}", "".join(story(it) for it in runners))
-                 .replace("{{latest}}", "".join(brief(it) for it in rest))
+                 .replace("{{latest}}", "".join(brief(it, n >= shown) for n, it in enumerate(rest)))
                  .replace("{{sections}}", "\n".join(sections)))
     footer = (
         "  <p>{name} links to {count} recent stories from {sources}. "
@@ -469,6 +521,8 @@ def render(items):
         path="", home="#top", home_label="Back to top",
         skip_href="#latest", skip_text="Skip to headlines",
         aside='<p class="updated">Updated %s</p>' % stamp(NOW),
+        search='<form class="search" role="search" onsubmit="return false"><label class="search-label" for="q">Search headlines</label>'
+               '<input id="q" type="search" placeholder="Search headlines" autocomplete="off"></form>',
         nav=sport_links(sports, ""), merch_current="",
         main=main_html, footer=footer)
     return home, sports
@@ -494,7 +548,8 @@ def shell(**fields):
     fields.setdefault("css", hashlib.md5((ROOT / "public" / "style.css").read_bytes()).hexdigest()[:10])
     fields.setdefault("merch_current", "")
     fields.setdefault("game_current", "")
-    raw = {"main", "footer", "nav", "aside", "merch_current", "game_current"}   # already HTML
+    fields.setdefault("search", "")
+    raw = {"main", "footer", "nav", "aside", "search", "merch_current", "game_current"}   # already HTML
     for key, value in fields.items():
         page = page.replace("{{%s}}" % key, value if key in raw else esc(value))
     return page.replace("{name}", esc(site["name"]))

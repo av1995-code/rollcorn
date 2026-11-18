@@ -1,4 +1,6 @@
 <main>
+  {{nextup}}
+  <p class="search-status" id="search-status" role="status" hidden></p>
   <div class="ticker" aria-label="Latest headlines">
     <span class="ticker-tag">Just in</span>
     <div class="ticker-view"><div class="ticker-track">{{ticker}}</div></div>
@@ -13,6 +15,7 @@
       </div>
       <div class="justin">
         <h3 class="justin-title">Top headlines</h3>
+        <div class="chips" role="group" aria-label="Show headlines for one sport">{{chips}}</div>
         <ol class="briefs">{{latest}}</ol>
       </div>
     </div>
