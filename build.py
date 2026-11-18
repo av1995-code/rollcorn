@@ -280,7 +280,7 @@ ODDS_SPORTS = [("Football", "americanfootball_ncaaf"),
                ("Men's basketball", "basketball_ncaab"),
                ("Women's basketball", "basketball_wncaab"),
                ("Baseball", "baseball_ncaa")]
-ODDS_VERSION = 2                       # raise this when the saved shape changes, so the next build fetches afresh
+ODDS_VERSION = 3                       # raise this when the saved shape changes, so the next build fetches afresh
 ODDS_BOOKS = ["draftkings", "fanduel", "betmgm", "williamhill_us", "espnbet"]     # first one with a line wins
 ODDS_EVERY = dt.timedelta(hours=14)
 ODDS_FILE = ROOT / "public" / "odds.json"
@@ -312,6 +312,10 @@ def upcoming(label, sport, key):
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     events = odds_get(sport + "/events", key, commenceTimeFrom=NOW.strftime(fmt), commenceTimeTo=until.strftime(fmt))   # free
     mine = sorted((e for e in events if IOWA in (e["home_team"], e["away_team"])), key=lambda e: e["commence_time"])[:3]
+    # say in the build log what the service had, so an empty board can be explained
+    near = sorted({t for e in events for t in (e["home_team"], e["away_team"]) if "Iowa" in t})
+    print("  odds: %s: %d games listed in the next two weeks, %d for %s; teams with Iowa in the name: %s" % (
+        label, len(events), len(mine), IOWA, ", ".join(near) or "none"), file=sys.stderr)
     if not mine:
         return []
     priced = {}
