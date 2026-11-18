@@ -308,7 +308,7 @@
   var pocket = "";
   var POWERS = { H: "HELMET", S: "SUPER PUNT", B: "BLOCKERS", P: "CORN MAGNET", U: "BIG UPRIGHTS", T: "TAILWIND" };
   function usePower() {
-    if (S.phase !== "play" || !pocket) return;
+    if (S.phase !== "play" || !pocket || paused) return;
     var code = pocket; pocket = "";
     if (code === "H") S.shield = true;
     else if (code === "B") { S.blockT = BLOCK.secs; S.knocked = S.knocked || 0; }
@@ -368,8 +368,21 @@
     board();
   }
 
+  var paused = false;
+  function pause() { if (S.phase === "play" && !paused) { paused = true; held = false; diving = false; label("Resume"); say("Paused. Tap to keep going."); } }
+  function resume() {                                      // back in, with the ball given a lift and a moment's grace
+    paused = false;
+    S.vy = Math.min(S.vy, TAP * 0.7); S.safe = Math.max(S.safe, 0.9); S.floatLeft = 0.9;
+    label("Tap!"); say("The punt is up. Keep tapping to keep it in the air.");
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) pause(); });
+  window.addEventListener("blur", pause);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "p" || e.key === "P" || e.key === "Escape") { if (paused) resume(); else pause(); }
+  });
   function tap() {
     audio();
+    if (paused) { resume(); return; }
     lastInput = now;
     if (S.phase === "intro" || (S.phase === "over" && S.wait > 0.25)) {
       if (slotVisible()) { putAway(); return; }            // first the machine steps aside, then the punter gets the tap
@@ -1212,6 +1225,7 @@
   canvas.addEventListener("pointerdown", function (e) {
     e.preventDefault();
     downY = e.clientY; pressed = true;
+    if (paused) { resume(); return; }
     var box = canvas.getBoundingClientRect(), px = (e.clientX - box.left) / U, py = (e.clientY - box.top) / U;
     if (slotVisible() && px > VW / 2 - PANEL.w / 2 && px < VW / 2 + PANEL.w / 2 + 34 && py > PANEL.y && py < PANEL.y + PANEL.h) {
       if (ui.auto) { ui.auto = false; tone(300, 0.08, "sine", 0.06); board(); return; }      // any tap ends an auto run
@@ -1257,14 +1271,14 @@
     if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") diving = false;
   });
   document.addEventListener("keydown", function (e) {
-    if ((e.key === "ArrowDown" || e.key === "s" || e.key === "S") && S.phase === "play") { e.preventDefault(); diving = true; held = false; }
+    if ((e.key === "ArrowDown" || e.key === "s" || e.key === "S") && S.phase === "play" && !paused) { e.preventDefault(); diving = true; held = false; }
   });
   document.addEventListener("keydown", function (e) {
     if (e.key !== " " && e.key !== "Enter" && e.key !== "ArrowUp") return;
     var t = e.target && e.target.tagName;
     if (t === "A" || t === "INPUT" || t === "TEXTAREA" || t === "SUMMARY" || (t === "BUTTON" && e.key !== "ArrowUp")) return;
     e.preventDefault();
-    if (e.key === " " && S.phase === "play") { if (!e.repeat) usePower(); return; }   // in the air, space is the power-up
+    if (e.key === " " && S.phase === "play" && !paused) { if (!e.repeat) usePower(); return; }   // in the air, space is the power-up
     held = true;
     if (!e.repeat) tap();
   });
@@ -1931,7 +1945,84 @@
     }
   }
 
+  // What has been built under "Build your stadium" stands behind the far sideline: bleachers with a crowd,
+  // a scoreboard that keeps the score, a press box, light poles, and a tunnel in the end zone. A finished
+  // stadium stays, and each new one adds pennants along the top.
+  function stadiumBack() {
+    if (typeof built === "undefined") return;
+    var lv = built.map(function (v) { return stadium > 1 ? 3 : v; });
+    if (!lv.some(function (v) { return v > 0; })) return;
+    var base = GY - 12, off = S.dist * 0.42, P = 720, night = clamp(tod - 1, 0, 1), i, r;
+    for (var k = Math.floor(off / P) - 1; k * P - off < VW + 40; k++) {
+      var x0 = k * P - off, sx = x0 + 60, sw = 330;
+      if (lv[3]) {                                                   // light poles, either side of the stand
+        for (i = 0; i < 2; i++) {
+          var lx = sx - 26 + i * (sw + 52), lh = 96 + lv[3] * 16;
+          ctx.strokeStyle = "#4A4A46"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(lx, base); ctx.lineTo(lx, base - lh); ctx.stroke();
+          ctx.fillStyle = "#2A2A28"; rr(lx - 13, base - lh - 9, 26, 10, 2); ctx.fill();
+          ctx.fillStyle = night > 0.2 ? "#FFF6C2" : "#D9D6C6";
+          for (r = 0; r < 4; r++) { ctx.beginPath(); ctx.arc(lx - 9 + r * 6, base - lh - 4, 2, 0, Math.PI * 2); ctx.fill(); }
+          if (night > 0.2) {
+            var glow = ctx.createRadialGradient(lx, base - lh - 4, 2, lx, base - lh - 4, 90);
+            glow.addColorStop(0, "rgba(255,244,190," + (0.5 * night).toFixed(2) + ")"); glow.addColorStop(1, "rgba(255,244,190,0)");
+            ctx.fillStyle = glow; ctx.fillRect(lx - 90, base - lh - 94, 180, 180);
+          }
+        }
+      }
+      if (lv[0]) {                                                   // bleachers: three rows a level, and somebody in most seats
+        var rows = lv[0] * 3, rh = 7.5, top = base - rows * rh;
+        ctx.fillStyle = "#6F6F69"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(sx - 8, base); ctx.lineTo(sx + 6, top - 3); ctx.lineTo(sx + sw - 6, top - 3); ctx.lineTo(sx + sw + 8, base); ctx.closePath(); ctx.fill(); ctx.stroke();
+        for (r = 0; r < rows; r++) {
+          var ry = base - (r + 1) * rh, inset = 8 - (r / rows) * 2 + 6 * ((r + 1) / rows);
+          ctx.fillStyle = r % 2 ? "#8C8C85" : "#A3A39B"; ctx.fillRect(sx + inset - 6, ry, sw - (inset - 6) * 2, rh - 1);
+          for (i = 0; i * 9 < sw - inset * 2 - 6; i++) {
+            var seed = (k * 131 + r * 17 + i * 7) % 11;
+            if (seed === 0) continue;                                 // an empty seat here and there
+            ctx.fillStyle = seed < 5 ? GOLD : seed < 8 ? "#151515" : "#F3F1E6";
+            ctx.fillRect(sx + inset + i * 9, ry + 1.2 + Math.sin(now * 3 + i + r) * 0.5, 5, 4.6);
+          }
+        }
+        if (lv[2]) {                                                 // the press box sits on top
+          var pw = 86 + lv[2] * 18, ph = 15 + lv[2] * 3, px = sx + sw / 2 - pw / 2, py = top - 3 - ph;
+          ctx.fillStyle = "#1C1C1C"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6; rr(px, py, pw, ph, 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = night > 0.2 ? "#FFE680" : "#BFE4F6";
+          for (i = 0; i * 14 + 8 < pw - 8; i++) ctx.fillRect(px + 6 + i * 14, py + 4, 10, ph - 9);
+          ctx.fillStyle = GOLD; ctx.fillRect(px, py - 2.5, pw, 2.5);
+        }
+        if (stadium > 1) {                                           // a pennant for each thing built in the new stadium
+          var flags = built.reduce(function (a, b) { return a + b; }, 0) + (stadium - 2) * 3;
+          for (i = 0; i < Math.min(flags, 14); i++) {
+            var fx = sx + 14 + i * ((sw - 28) / 13), fy = top - 6 - (lv[2] ? 0 : 0);
+            ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy - 12); ctx.stroke();
+            ctx.fillStyle = i % 2 ? GOLD : "#151515"; ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.lineTo(fx + 8 + Math.sin(now * 5 + i) * 1.2, fy - 9.5); ctx.lineTo(fx, fy - 7); ctx.closePath(); ctx.fill();
+          }
+        }
+      }
+      if (lv[1]) {                                                   // the scoreboard, and it keeps the real score
+        var bw = 92 + lv[1] * 14, bh = 38 + lv[1] * 5, bx = x0 + 470, by = base - 62 - lv[1] * 10;
+        ctx.strokeStyle = "#4A4A46"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx + 14, base); ctx.lineTo(bx + 14, by + bh); ctx.moveTo(bx + bw - 14, base); ctx.lineTo(bx + bw - 14, by + bh); ctx.stroke();
+        ctx.fillStyle = "#0B0B0B"; ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; rr(bx, by, bw, bh, 4); ctx.fill(); ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#C9C9BF"; ctx.font = "700 8px " + LABEL; ctx.fillText("ROLL CORN  \u00B7  " + quarterName(S.q || 0), bx + bw / 2, by + 9, bw - 8);
+        ctx.fillStyle = GOLD; ctx.font = "700 " + (18 + lv[1] * 2) + "px " + DISPLAY;
+        ctx.fillText(Math.floor(S.pts || 0).toLocaleString("en-US"), bx + bw / 2, by + bh / 2 + 6, bw - 10);
+      }
+    }
+    if (lv[4]) {                                                     // the tunnel the team runs out of, right behind the punter
+      var th = 40 + lv[4] * 7, tw = 62 + lv[4] * 6, tx = BX - 54 - S.dist - tw / 2;
+      if (tx > -tw - 20) {
+        for (i = 0; i < 5; i++) {
+          ctx.fillStyle = i % 2 ? "#151515" : GOLD; ctx.strokeStyle = INK; ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.ellipse(tx + tw / 2, GY + 2, tw / 2 - i * 5, th - i * 6, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.fillStyle = "#050505"; ctx.beginPath(); ctx.ellipse(tx + tw / 2, GY + 2, tw / 2 - 25, th - 30, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
   function field() {
+    stadiumBack();
     // a row of corn along the far sideline
     cornRow(S.dist * 0.62, 22, 7, HUSK, true);
 
@@ -2630,9 +2721,10 @@
         ctx.stroke();
       }
     }
-    var sh = clamp(1 - (GY - S.y) / 400, 0.3, 1);
-    ctx.fillStyle = "rgba(0,0,0,.25)";
-    ctx.beginPath(); ctx.ellipse(BX, feet + 3, 12 * sh, 3.4 * sh, 0, 0, Math.PI * 2); ctx.fill();
+    // the ball's shadow on the grass: smaller and fainter the higher it flies, and flashing red when the ground is close
+    var up = clamp((GY - S.y) / (GY - 30), 0, 1), low = S.phase === "play" && S.y > GY - 78 && S.vy > 40 && S.safe <= 0;
+    ctx.fillStyle = low ? "rgba(215,38,30," + (0.55 + 0.3 * Math.sin(now * 22)).toFixed(2) + ")" : "rgba(0,0,0," + (0.46 - 0.2 * up).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(BX + up * 6, feet + 3, 14 - 7 * up, 4.4 - 2 * up, 0, 0, Math.PI * 2); ctx.fill();
     if (S.phase === "intro" || (S.phase === "over" && S.rw >= 1)) {
       var gx = BX + 30, gTop = feet - 128, gH = 112, gW = 22, gv = gaugeNow();
       ctx.fillStyle = "#111"; ctx.strokeStyle = INK; ctx.lineWidth = 3;
@@ -2758,8 +2850,12 @@
     var dt = Math.min(0.034, (ts - last) / 1000 || 0);
     last = ts;
     requestAnimationFrame(frame);                         // asked for first, so one bad frame can never stop the game
-    update(dt);
+    if (!paused) update(dt);
     draw();
+    if (paused) {
+      ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(0, 0, VW, VH);
+      sign(["Paused", "Tap to keep going"], 220, "gold");
+    }
   }
 
   // For testing only: open the page with #cctest to let a script read the game and tap.
