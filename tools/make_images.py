@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the Roll Corn mark as PNG files (cursor, phone icon, share image).
+"""Draw the Roll Corn mark as PNG files (cursor, phone and home-screen icons, share image).
 
 The mark is the same drawing as public/mark.svg, rebuilt here from its
 geometry so it can be saved as PNG without an SVG renderer.
@@ -123,12 +123,18 @@ def on_gold(width, height, mark_size):
 
 
 def main():
-    # mouse pointer: normal and over-a-link sizes, each at 1x and 2x
-    for name, px in (("cursor", 32), ("cursor-link", 44)):
+    # mouse pointer: normal and over-a-link sizes, each at 1x and 2x. Browsers will not draw a pointer
+    # larger than 32 pixels where it meets the edge of the page, so the larger of the two stops there.
+    for name, px in (("cursor", 24), ("cursor-link", 32)):
         draw_mark(px).save(OUT / f"{name}.png")
         draw_mark(px * 2).save(OUT / f"{name}@2x.png")
     draw_mark(512).save(OUT / "mark-512.png")              # the mark alone
     on_gold(180, 180, 150).save(OUT / "apple-touch-icon.png")
+    # home-screen icons named in site.webmanifest: the mark sits inside the middle 80%, so a phone
+    # that crops its icons to a circle or a rounded square never cuts into it
+    on_gold(64, 64, 56).save(OUT / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)])    # for browsers that do not take the SVG one
+    on_gold(192, 192, 134).save(OUT / "icon-192.png")
+    on_gold(512, 512, 358).save(OUT / "icon-512.png")
     on_gold(1200, 630, 470).save(OUT / "share.png")        # link previews
     print("wrote images to", OUT)
 

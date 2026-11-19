@@ -229,18 +229,13 @@ def card(product):
         status = '<a class="product-buy" href="%s" rel="noopener">%s</a>' % (esc(product["url"]), label)
     else:
         status = '<p class="product-soon">Coming soon</p>'
-    return ('<li class="product">%s<h3 class="product-name">%s</h3>'
+    return ('<li class="product">%s<h2 class="product-name">%s</h2>'
             '<p class="product-blurb">%s</p>%s</li>'
             % (art, esc(product["name"]), esc(product["blurb"]), status))
 
 
 def page(config):
+    """Everything under the merch page's title band."""
     cards = "".join(card(p) for p in config["products"])
-    return (
-        DEFS + '\n<main id="merch" class="merch">\n'
-        '  <h2 class="sign">Merch</h2>\n'
-        '  <div class="merch-body">\n'
-        '    <p class="merch-intro">%s</p>\n'
-        '    <ul class="products">%s</ul>\n'
-        '  </div>\n'
-        '</main>' % (esc(config["intro"]), cards))
+    return (DEFS + '<p class="page-intro">%s</p><ul class="products">%s</ul><p class="merch-note">%s</p>'
+            % (esc(config["intro"]), cards, esc(config["note"])))

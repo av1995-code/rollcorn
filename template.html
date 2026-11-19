@@ -3,28 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'inline-speculation-rules'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>{{title}}</title>
 <meta name="description" content="{{description}}">
 <link rel="canonical" href="{{url}}/{{path}}">
+<meta property="og:site_name" content="{{name}}">
 <meta property="og:title" content="{{title}}">
 <meta property="og:description" content="{{description}}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{url}}/{{path}}">
 <meta property="og:image" content="{{url}}/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The {{name}} mark: an ear of corn with its husk rolled around it into a wheel, on gold.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#FFCD00">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@700&family=Zilla+Slab:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v={{css}}">
+<script src="site.js?v={{js}}" defer></script>
+<script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>
 </head>
 <body id="top">
 <a class="skip" href="{{skip_href}}">{{skip_text}}</a>
 
-<!-- The logo's O: an ear of corn with its husk rolled around it into a wheel. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<!-- Drawn once, used all over. The logo's O is an ear of corn with its husk rolled around it into a wheel.
+     The rest are the markings of each sport's own field, seen from above: plain line drawings, no one's logo. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
     <pattern id="kernels" width="12.6" height="21" patternUnits="userSpaceOnUse" x="-6.3" y="-44">
       <rect x="1.1" y="1.1" width="10.4" height="8.3" rx="3.4" fill="#FFCD00"/>
@@ -42,169 +52,97 @@
         <path d="M40.8 112.6 A56 56 0 1 1 88 11.5 A50.3 50.3 0 0 0 37.1 92.8Z" fill="#3FA34D"/>
       </g>
     </symbol>
+    <symbol id="turf-football" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M0 16H400M0 184H400" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <path d="M40 16V184M80 16V184M120 16V184M160 16V184M200 16V184M240 16V184M280 16V184M320 16V184M360 16V184" vector-effect="non-scaling-stroke"/>
+        <path d="M7.5 20H400M7.5 180H400" stroke-width="5" stroke-dasharray="1 7"/>
+        <path d="M7.5 79H400M7.5 121H400" stroke-width="7" stroke-dasharray="1 7"/>
+      </g>
+    </symbol>
+    <symbol id="turf-basketball" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M60 6H394V194H60" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <path d="M394 62H282V138H394M282 62A38 38 0 0 0 282 138M378 82V118M60 60A40 40 0 0 1 60 140" vector-effect="non-scaling-stroke"/>
+        <path d="M282 62A38 38 0 0 1 282 138" stroke-dasharray="6 6" vector-effect="non-scaling-stroke"/>
+        <path d="M394 20H352A118 118 0 0 0 352 180H394M330 62v-6M312 62v-6M330 138v6M312 138v6" vector-effect="non-scaling-stroke"/>
+        <circle cx="368" cy="100" r="8" vector-effect="non-scaling-stroke"/>
+      </g>
+    </symbol>
+    <symbol id="turf-wrestling" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M150 -30V230" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <circle cx="290" cy="100" r="112" vector-effect="non-scaling-stroke"/>
+        <circle cx="290" cy="100" r="92" stroke-dasharray="2 8" vector-effect="non-scaling-stroke"/>
+        <circle cx="290" cy="100" r="30" vector-effect="non-scaling-stroke"/>
+        <path d="M280 86V114M300 86V114" vector-effect="non-scaling-stroke"/>
+      </g>
+    </symbol>
+    <symbol id="turf-volleyball" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M70 26H390V174H70Z" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <path d="M230 12V188" stroke-width="4" vector-effect="non-scaling-stroke"/>
+        <path d="M177 26V174M283 26V174" vector-effect="non-scaling-stroke"/>
+        <path d="M177 12V26M177 174V188M283 12V26M283 174V188" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+      </g>
+    </symbol>
+    <symbol id="turf-diamond" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M280 214L130 64M280 214L430 64" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <path d="M280 190L206 116L280 42L354 116ZM168 102A158 158 0 0 1 392 102" vector-effect="non-scaling-stroke"/>
+        <path d="M76 10A290 290 0 0 1 484 10" stroke-dasharray="2 8" vector-effect="non-scaling-stroke"/>
+        <circle cx="280" cy="122" r="13" vector-effect="non-scaling-stroke"/>
+        <path d="M274 36h12v12h-12zM200 110h12v12h-12zM348 110h12v12h-12zM272 184h16v8l-8 7l-8-7z" vector-effect="non-scaling-stroke"/>
+      </g>
+    </symbol>
+    <symbol id="turf-track" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M40 14H300A86 86 0 0 1 300 186H40M40 78H300A22 22 0 0 1 300 122H40" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <path d="M40 30H300A70 70 0 0 1 300 170H40M40 46H300A54 54 0 0 1 300 154H40M40 62H300A38 38 0 0 1 300 138H40" vector-effect="non-scaling-stroke"/>
+        <path d="M120 14V30M132 30V46M144 46V62M156 62V78" vector-effect="non-scaling-stroke"/>
+      </g>
+    </symbol>
+    <symbol id="turf-uprights" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M300 200V128M262 128H338M262 128V22M338 128V22" stroke-width="3.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <path d="M60 196C120 40 220 -6 300 62" stroke-dasharray="2 9" stroke-linecap="round" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <ellipse cx="300" cy="62" rx="13" ry="8" transform="rotate(-28 300 62)" vector-effect="non-scaling-stroke"/>
+        <path d="M0 196H400" vector-effect="non-scaling-stroke"/>
+      </g>
+    </symbol>
   </defs>
 </svg>
 
 <header class="top">
   <div class="top-inner">
-    <h1 class="wordmark" aria-label="{{name}}"><a class="wordmark-link" href="{{home}}" aria-hidden="true" tabindex="-1"><span class="word">R<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>LL</span> <span class="word">C<svg class="ear" viewBox="0 0 120 120"><use href="#ear"/></svg>RN</span></a></h1>
+    <{{brand_tag}} class="wordmark"><a class="wordmark-link" href="{{home}}"><span class="word">R<span class="visually-hidden">o</span><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg>ll</span> <span class="word">C<span class="visually-hidden">o</span><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg>rn</span></a></{{brand_tag}}>
     <p class="tagline">{{tagline}}</p>
     {{aside}}
     {{search}}
   </div>
 </header>
 
-<nav class="jump" aria-label="Sections">
+<nav class="jump" aria-label="Site">
   <div class="jump-inner">
     <a class="jump-home" href="{{home}}" aria-label="{{home_label}}"><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></a>
     <div class="jump-sports">{{nav}}</div>
-    <a class="jump-merch jump-play" href="hang-time.html"{{game_current}}>Play</a>
-    <a class="jump-merch" href="merch.html"{{merch_current}}>Merch</a>
+    <a class="jump-play" href="hang-time.html"{{game_current}}>Play</a>
   </div>
 </nav>
 
 {{main}}
 
-<a class="totop" href="#top" aria-label="Back to top">Top</a>
+<a class="totop" href="#top">Top</a>
+{{data}}
 
 <footer class="foot">
+  <div class="foot-inner">
+    <a class="foot-mark" href="{{home}}" aria-label="{{home_label}}"><svg class="ear" viewBox="0 0 120 120" aria-hidden="true"><use href="#ear"/></svg></a>
+    <nav class="foot-nav" aria-label="All pages">{{foot_nav}}</nav>
+    <div class="foot-notes">
 {{footer}}
+    </div>
+  </div>
 </footer>
-
-<script>
-// Times: "3 hours ago" under headlines, "3h" in the Just in column.
-(function () {
-  var long = window.Intl && Intl.RelativeTimeFormat
-    ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }) : null;
-  var steps = [["day", 86400, "d"], ["hour", 3600, "h"], ["minute", 60, "m"]];
-  function refresh() {
-    document.querySelectorAll("time[datetime]").forEach(function (el) {
-      var secs = (Date.now() - new Date(el.dateTime)) / 1000;
-      if (!el.title) el.title = el.textContent;
-      for (var i = 0; i < steps.length; i++) {
-        if (secs >= steps[i][1] || i === steps.length - 1) {
-          var n = Math.max(0, Math.round(secs / steps[i][1]));
-          if (el.hasAttribute("data-short")) el.textContent = n + steps[i][2];
-          else if (long) el.textContent = long.format(-n, steps[i][0]);
-          return;
-        }
-      }
-    });
-  }
-  refresh();
-  setInterval(refresh, 60000);
-})();
-</script>
-<script>
-// Mark headlines published since this browser last opened the page.
-(function () {
-  var last = 0;
-  try { last = Number(localStorage.getItem("rollcorn-last-visit")) || 0; } catch (e) {}
-  if (last) {
-    document.querySelectorAll(".story, .brief").forEach(function (el) {
-      var t = el.querySelector("time[datetime]");
-      if (t && new Date(t.dateTime).getTime() > last) el.classList.add("is-new");
-    });
-  }
-  // Remember this visit once the reader has had a moment with the page.
-  setTimeout(function () {
-    try { localStorage.setItem("rollcorn-last-visit", String(Date.now())); } catch (e) {}
-  }, 4000);
-})();
-</script>
-<script>
-// Finding things: a sport filter on the headline list, "show more" in each sport, and a search across the page.
-(function () {
-  var briefs = [].slice.call(document.querySelectorAll(".brief")), chips = [].slice.call(document.querySelectorAll(".chip")), sport = "";
-  function list() {                                   // ten headlines, from the chosen sport
-    var n = 0;
-    briefs.forEach(function (b) { b.hidden = !((!sport || b.getAttribute("data-sport") === sport) && n++ < 10); });
-  }
-  chips.forEach(function (c) {
-    c.addEventListener("click", function () {
-      sport = c.getAttribute("data-sport");
-      chips.forEach(function (o) { var on = o === c; o.classList.toggle("is-on", on); o.setAttribute("aria-pressed", on ? "true" : "false"); });
-      list();
-    });
-  });
-  document.querySelectorAll(".more-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      btn.parentNode.querySelectorAll("[data-more]").forEach(function (el) { el.hidden = false; });
-      btn.remove();
-    });
-  });
-  var q = document.getElementById("q"), status = document.getElementById("search-status");
-  if (q) {
-    var all = [].slice.call(document.querySelectorAll("main .story, main .brief"));
-    all.forEach(function (el) { el.setAttribute("data-was", el.hidden ? "1" : ""); });
-    q.addEventListener("input", function () {
-      var term = q.value.trim().toLowerCase(), hits = 0, seen = {};
-      document.body.classList.toggle("is-searching", !!term);
-      all.forEach(function (el) {
-        if (!term) { el.hidden = !!el.getAttribute("data-was"); return; }
-        var a = el.querySelector("a"), ok = el.textContent.toLowerCase().indexOf(term) >= 0 && a && !seen[a.href] && !el.closest(".justin");
-        if (ok) { seen[a.href] = 1; hits++; }
-        el.hidden = !ok;
-      });
-      document.querySelectorAll(".plot").forEach(function (p) { p.hidden = !!term && !p.querySelector(".story:not([hidden])"); });
-      if (!term) list();
-      status.hidden = !term;
-      status.textContent = term ? (hits ? hits + (hits === 1 ? " headline matches \u201C" : " headlines match \u201C") + q.value.trim() + "\u201D" : "No headlines match \u201C" + q.value.trim() + "\u201D. Try a name or a team.") : "";
-    });
-  }
-  var top = document.querySelector(".totop");
-  if (top) window.addEventListener("scroll", function () { top.classList.toggle("is-up", window.scrollY > 900); }, { passive: true });
-})();
-</script>
-<script>
-// Game times in the reader's own time zone.
-(function () {
-  if (!window.Intl) return;
-  var day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
-  var hour = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-  document.querySelectorAll("[data-kick]").forEach(function (el) {
-    var d = new Date(el.getAttribute("data-kick"));
-    if (!isNaN(d)) el.textContent = day.format(d) + " \u00B7 " + hour.format(d);
-  });
-})();
-</script>
-<script>
-// The sport bar shows where the reader is: the section in view is lit, and kept in sight in the bar.
-(function () {
-  if (!("IntersectionObserver" in window)) return;
-  var links = {}, bar = document.querySelector(".jump-sports");
-  document.querySelectorAll(".jump-sports a").forEach(function (a) {
-    var id = (a.getAttribute("href") || "").split("#")[1];
-    if (id && a.getAttribute("href").charAt(0) === "#") links[id] = a;
-  });
-  var seen = {};
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
-    var here = "";
-    Object.keys(links).forEach(function (id) { if (seen[id] && !here) here = id; });
-    Object.keys(links).forEach(function (id) { links[id].classList.toggle("is-here", id === here); });
-    if (here && bar) {
-      var a = links[here], left = a.offsetLeft - bar.offsetLeft;
-      if (left < bar.scrollLeft || left + a.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollTo({ left: Math.max(0, left - 24), behavior: "smooth" });
-    }
-  }, { rootMargin: "-25% 0px -60% 0px" });
-  Object.keys(links).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
-})();
-</script>
-<script>
-// The corn wheels roll as the page scrolls.
-(function () {
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  var root = document.documentElement, queued = false;
-  function roll() {
-    queued = false;
-    root.style.setProperty("--roll", (window.scrollY * 0.45).toFixed(1) + "deg");
-  }
-  window.addEventListener("scroll", function () {
-    if (!queued) { queued = true; requestAnimationFrame(roll); }
-  }, { passive: true });
-  roll();
-})();
-</script>
 </body>
 </html>

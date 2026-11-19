@@ -1,8 +1,11 @@
 name: Update headlines
 
+# GitHub runs scheduled workflows when it has room, not on the minute: for this site that has meant a
+# rebuild every few hours, not every half hour. For a dependable half hour, have an outside timer call
+# this workflow's "workflow_dispatch" (see README.md, "Keeping it fresh"). The schedule stays as a fallback.
 on:
   schedule:
-    - cron: "7,37 * * * *"   # twice an hour
+    - cron: "7,37 * * * *"
   push:
     branches: [main]
   workflow_dispatch:
@@ -12,32 +15,33 @@ permissions:
   pages: write
   id-token: write
 
+# One run at a time. A newer run waits for the one in progress instead of cancelling it: a deployment
+# cut off half way helps nobody, and a cancelled build may already have paid for fresh lines.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Pull headlines and build the page
+      - uses: actions/checkout@v7
+      - name: Pull headlines and build the site      # standard library only, so the runner's own python3 does
         run: python3 build.py
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}   # for The Lines; without it the board is simply empty
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: public
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

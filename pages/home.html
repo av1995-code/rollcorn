@@ -1,30 +1,25 @@
-<main>
+<main id="page">
   {{nextup}}
-  <p class="search-status" id="search-status" role="status" hidden></p>
-  <div class="ticker" aria-label="Latest headlines">
-    <span class="ticker-tag">Just in</span>
-    <div class="ticker-view"><div class="ticker-track">{{ticker}}</div></div>
+{{since}}
+
+  <div class="latest" id="latest">
+    <section class="latest-main" aria-labelledby="h-top">
+      <h2 class="visually-hidden" id="h-top">Top stories</h2>
+      {{lead}}
+      <ul class="runners">{{runners}}</ul>
+      <a class="promo" href="hang-time.html">
+        <svg class="turf" aria-hidden="true" focusable="false"><use href="#turf-uprights"/></svg>
+        <span class="promo-text"><span class="promo-title">Hang Time</span><span class="promo-sub" id="promo-line">Punt it, keep it up, spin the corn slots. Free to play.</span></span>
+        <span class="promo-btn">Play</span>
+      </a>
+    </section>
+    <section class="justin" aria-labelledby="h-latest">
+      <h2 class="justin-title" id="h-latest">Latest</h2>
+      <div class="chips" role="group" aria-label="Show headlines for one sport">{{chips}}</div>
+      <ol class="briefs">{{latest}}</ol>
+      <button class="more-btn" id="latest-more" type="button">More headlines</button>
+    </section>
   </div>
-
-  <section class="latest" id="latest" aria-labelledby="h-latest">
-    <h2 class="sign" id="h-latest">Latest</h2>
-    <div class="latest-body">
-      <div class="latest-main">
-        {{lead}}
-        <ul class="runners">{{runners}}</ul>
-      </div>
-      <div class="justin">
-        <h3 class="justin-title">Top headlines</h3>
-        <div class="chips" role="group" aria-label="Show headlines for one sport">{{chips}}</div>
-        <ol class="briefs">{{latest}}</ol>
-      </div>
-    </div>
-  </section>
-
-  <a class="promo" href="hang-time.html">
-    <span class="promo-text"><span class="promo-kicker">Free to play</span><span class="promo-title">Hang Time</span><span class="promo-sub">Punt it, keep it up, spin the corn slots.</span></span>
-    <span class="promo-btn">Play now</span>
-  </a>
 
   <div class="field">
 {{sections}}

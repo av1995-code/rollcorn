@@ -1,9 +1,7 @@
-<main>
-  <section class="cc" id="game" aria-labelledby="h-game">
-    <h2 class="sign cc-title" id="h-game">Hang Time</h2>
-    <div class="cc-body">
-      <p class="merch-intro">Time the kick, then keep the punt in the air.</p>
-
+<section class="cc" id="game" aria-label="The game">
+  <div class="cc-stage">
+    <div class="cc-top">
+      <h1 class="cc-name">Hang Time</h1>
       <dl class="cc-board">
         <div hidden><dt>Score</dt><dd id="cc-score">0</dd></div>
         <div><dt>Best</dt><dd id="cc-best">0</dd></div>
@@ -11,38 +9,65 @@
         <div hidden><dt>Jackpot</dt><dd id="cc-pot">150</dd></div>
         <div><dt id="cc-goal-label">Today's goal</dt><dd id="cc-goal">&nbsp;</dd></div>
       </dl>
+    </div>
 
-      <canvas class="cc-field" id="cc-field" width="960" height="480"
-              role="img" aria-label="A football field with defenders, referees and goalposts to fly a punt over. The game is played by tapping the field or the button below."></canvas>
+    <canvas class="cc-field" id="cc-field" width="960" height="480"
+            role="img" aria-label="A football field with defenders, referees and goalposts to fly a punt over. The game is played by tapping the field or the button below."></canvas>
 
-      <div class="cc-controls">
-        <button class="cc-go" id="cc-go" type="button">Punt</button>
-        <p class="cc-status" id="cc-status" aria-live="polite">Tap when the arrow is on the gold to punt. Then tap to rise, and hold to float. You score 10 points for every second in the air, plus bonuses for corn, kicks through the uprights and close calls. You get three lives a game, and your score carries across them. A punt earns a spin on the slots at 150, 400 and 800 points. A golden ear, halftime or a new best earns a golden spin, which always wins, and every ear you catch also feeds the jackpot. Down arrow, or a drag downward, dives. P pauses. The slots give you power-ups: one in your hand and up to two waiting. You can also catch one on the field when your hand is empty. Press the space bar, or tap the badge, to use the one in your hand.</p>
+    <div class="cc-controls">
+      <button class="cc-go" id="cc-go" type="button">Punt</button>
+      <p class="cc-status" id="cc-status" aria-live="polite">Tap when the arrow is on the gold to punt. Then tap to rise, and hold to float.</p>
+      <div class="cc-tools">
         <button class="cc-mini cc-slotbtn" id="cc-spin" type="button" hidden>Spin</button>
         <button class="cc-mini" id="cc-keep" type="button" hidden>Keep</button>
         <button class="cc-mini cc-slotbtn" id="cc-double" type="button" hidden>Double or nothing</button>
         <button class="cc-mini" id="cc-share" type="button" hidden>Share score</button>
-        <button class="cc-mini" id="cc-sound" type="button" aria-pressed="true">Sound on</button>
+        <button class="cc-mini" id="cc-sound" type="button">Sound on</button>
       </div>
+    </div>
+  </div>
 
-      <h3 class="cc-how-title">Today, in one picture</h3>
-      <div class="cc-today">
+  <dl class="cc-rules">
+    <div><dt>Score</dt><dd>10 points for every second in the air, plus bonuses for corn, kicks through the uprights and close calls. You get three lives a game, and your score carries across them.</dd></div>
+    <div><dt>Slots</dt><dd>A punt earns a spin at 150, 400 and 800 points. A golden ear, halftime or beating your best score earns a golden spin, which always wins. Every ear you catch also feeds the jackpot.</dd></div>
+    <div><dt>Power-ups</dt><dd>The slots give them: one in your hand and up to two waiting. You can also catch one on the field when your hand is empty. Press the space bar, or tap the badge, to use the one in your hand.</dd></div>
+    <div><dt>Keys</dt><dd>Space or Enter punts. In the air, Enter or the up arrow taps and space uses your power-up. Down arrow, or a drag downward, dives. P pauses.</dd></div>
+  </dl>
+  <p class="cc-free">Hang Time is free. Corn and spins cannot be bought, and they have no cash value.</p>
+
+  <div class="cc-cards">
+    <section class="plot cc-card" aria-labelledby="h-today">
+      <header class="plot-head"><h2 class="sign" id="h-today">Today, in one picture</h2></header>
+      <div class="plot-body cc-today">
         <canvas class="cc-mandala" id="cc-mandala" width="360" height="360" role="img" aria-label="A circle of petals, one for each punt today. Longer petals are longer punts."></canvas>
         <div>
-          <p class="cc-status" id="cc-mandala-note">Your first punt today starts it.</p>
+          <p class="cc-note" id="cc-mandala-note">Your first punt today starts it.</p>
           <p class="cc-you">You are: <strong id="cc-type">In 10 punts</strong><br>Nemesis: <strong id="cc-nemesis">None yet</strong></p>
-          <p class="cc-key">One petal for every punt. The longer it hung, the longer the petal. The colour is what brought it down: <span style="--k:#B9B5A5">wall</span> <span style="--k:#8A1F1F">returner</span> <span style="--k:#FFD400">flag</span> <span style="--k:#8B4A1E">their punt</span> <span style="--k:#6FBF4A">mascot</span> <span style="--k:#3D6FB5">bench</span> <span style="--k:#D9A300">uprights</span> <span style="--k:#8B5A2B">ground</span></p>
+          <p class="cc-key">One petal for every punt. The longer it hung, the longer the petal. The color is what brought it down: <span style="--k:#B9B5A5">wall</span> <span style="--k:#8A1F1F">returner</span> <span style="--k:#FFD400">flag</span> <span style="--k:#8B4A1E">their punt</span> <span style="--k:#6FBF4A">mascot</span> <span style="--k:#3D6FB5">bench</span> <span style="--k:#D9A300">uprights</span> <span style="--k:#8B5A2B">ground</span></p>
           <button class="cc-mini" id="cc-save" type="button" hidden>Save the picture</button>
         </div>
       </div>
+    </section>
 
-      <h3 class="cc-how-title">Build your stadium</h3>
-      <p class="cc-status" id="cc-build-note"></p>
-      <div class="cc-balls" id="cc-build"></div>
+    <section class="plot cc-card" aria-labelledby="h-build">
+      <header class="plot-head"><h2 class="sign" id="h-build">Build your stadium</h2></header>
+      <div class="plot-body">
+        <p class="cc-note" id="cc-build-note"></p>
+        <div class="cc-balls" id="cc-build"></div>
+      </div>
+    </section>
 
-      <h3 class="cc-how-title">Pick your ball</h3>
-      <div class="cc-balls" id="cc-balls"></div>
-    </div>
-  </section>
-</main>
+    <section class="plot cc-card" aria-labelledby="h-balls">
+      <header class="plot-head"><h2 class="sign" id="h-balls">Pick your ball</h2></header>
+      <div class="plot-body">
+        <div class="cc-balls" id="cc-balls"></div>
+      </div>
+    </section>
+
+    <section class="plot cc-card cc-news" aria-labelledby="h-news">
+      <header class="plot-head"><h2 class="sign" id="h-news">Meanwhile, in the news</h2></header>
+      <div class="plot-body"><ul class="stories">{{headlines}}</ul><a class="more-link" href="./">All the headlines</a></div>
+    </section>
+  </div>
+</section>
 <script src="hang-time.js?v={{js}}"></script>

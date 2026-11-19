@@ -25,14 +25,18 @@
   var mandala = document.getElementById("cc-mandala");
   var mandalaNote = document.getElementById("cc-mandala-note");
   var saveBtn = document.getElementById("cc-save");
+  // Whether the player's last move was on the keyboard. A list of buttons that is rebuilt gives focus back
+  // only then: after a mouse click it would drag the page down to the list, and hand the next press of
+  // Space to a button the player is no longer looking at.
+  var keyed = false;
+  window.addEventListener("keydown", function (e) { if (e.key === "Tab" || e.key === "Enter" || e.key === " ") keyed = true; }, true);
+  window.addEventListener("pointerdown", function () { keyed = false; }, true);
 
   var GOLD = "#FFCD00", INK = "#000", TURF = "#3FA34D", TURF_DARK = "#2F8F41", HUSK = "#22753A", RED = "#D7261E";
   var DISPLAY = '"Antonio", "Roboto Condensed", "Arial Narrow", sans-serif';
   var LABEL = '"Roboto Condensed", "Arial Narrow", sans-serif';
   // The score. Hang time is the heart of it; everything else is a way to add to it.
   var POINTS = { second: 10, kernel: 5, bigKernel: 25, uprights: 30, close: 10, perfect: 50, good: 15 };
-  var RANKS = [[0, "Warming up"], [150, "Finding your leg"], [400, "Good hang"],
-               [900, "Great hang"], [2000, "Punting is winning"]];
   // What the game says when a punt comes down. It is always on the player's side.
   var KIND = ["Good try. You have another one in you.", "Nice effort. Shake it off.", "That is how you learn the wind.",
               "Every punt teaches you something.", "You are getting the feel of it.", "Good swing. Go again."];
@@ -57,7 +61,7 @@
   var SPIN = 1.5;                                      // seconds each spin of the slots takes
   var W = 960, H = 480, U = 1, VW = 960, BX = 270;
 
-  function load(key) { try { return Number(localStorage.getItem(key)) || 0; } catch (e) { return 0; } }
+  function load(key) { try { var v = Number(localStorage.getItem(key)); return isFinite(v) && v > 0 ? v : 0; } catch (e) { return 0; } }
   function loadText(key) { try { return localStorage.getItem(key) || ""; } catch (e) { return ""; } }
   function save(key, v) { try { localStorage.setItem(key, String(v)); } catch (e) {} }
   var best = load("rollcorn-hang-best");               // longest hang time, in seconds
@@ -67,6 +71,10 @@
   var pot = load("rollcorn-hang-pot") || 150;          // the slots jackpot: a share of every spin goes into it
   var ballId = loadText("rollcorn-hang-ball") || "football";
   var muted = load("rollcorn-coffin-muted") === 1;
+  (function () {
+    var owed = load("rollcorn-hang-owed");
+    if (owed) { bank += owed; earned += owed; save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned); save("rollcorn-hang-owed", 0); }
+  })();
   var COB = 40;                                        // kernels it takes to fill the ear in the corner
   var cob = load("rollcorn-hang-cob") % COB;
   var BEAT = 0.3185;                                   // half the time between taps when the ball is held level
@@ -75,6 +83,16 @@
     var d = new Date(Date.now() - (back || 0) * 864e5);
     return "rollcorn-hang-day-" + d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
   }
+  (function () {                                       // keys with a date in their name: two months are kept, older ones swept out
+    try {
+      var old = [], cutoff = Date.now() - 60 * 864e5;
+      for (var i = 0; i < localStorage.length; i++) {
+        var name = localStorage.key(i), m = /^rollcorn-hang-(?:day|goal|mandala)-(\d+)-(\d+)-(\d+)$/.exec(name || "");
+        if (m && new Date(+m[1], +m[2] - 1, +m[3]).getTime() < cutoff) old.push(name);
+      }
+      old.forEach(function (name) { localStorage.removeItem(name); });
+    } catch (e) {}
+  })();
   function dayStats(back) {                            // total seconds, punts and best for a day
     var parts = loadText(dayKey(back)).split(",");
     return { sum: Number(parts[0]) || 0, count: Number(parts[1]) || 0, best: Number(parts[2]) || 0 };
@@ -83,6 +101,8 @@
   // and what keeps bringing them down.
   var hist = [];
   try { hist = JSON.parse(loadText("rollcorn-hang-hist") || "[]"); } catch (e) { hist = []; }
+  if (!Array.isArray(hist)) hist = [];
+  hist = hist.filter(function (h) { return h && typeof h === "object"; });
   var typeWait = 0;                                    // punts in a row that have read as a different type
   var ptype = loadText("rollcorn-hang-type");          // the punter's type, once ten punts are in
   var nem = loadText("rollcorn-hang-nem");             // their nemesis: what downs them most
@@ -108,6 +128,7 @@
     collector: ["The Collector", "You do not leave corn behind."],
     natural: ["The Natural", "You play it as it comes."]
   };
+  if (!Object.prototype.hasOwnProperty.call(TYPES, ptype)) ptype = "";   // a type this build does not know
   // read the last ten punts and pick the trait that stands out most
   function readType() {
     var last = hist.slice(-10);
@@ -130,14 +151,18 @@
   var held = false;                                    // finger, mouse button or key is down
   var superNext = false;                               // won on the slots: the next punt is a super punt
   var SUPER = { secs: 6, speed: 380, smash: 20, bonus: 100 };
-  var doubleNext = false;                              // won on the slots: the next punt scores double
+  var doubleNext = load("rollcorn-hang-next2x") === 1; // won on the slots: the next punt scores double
   var freeHelmet = false;                              // won on the slots: the next punt starts with a helmet
 
+  var COARSE = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);              // a finger, not a mouse
+  var CALM = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);  // the player asked for less motion
   var S = null;                                        // the current punt
   var now = 0, shake = 0, tod = 0, flash = 0, zoom = 0, cheerAt = -9, sparkAt = -9;
   var particles = [], floaters = [], clouds = [], stars = [];
-  for (var c = 0; c < 2; c++) clouds.push({ x: Math.random() * 1400, y: 30 + Math.random() * 150, s: 0.6 + Math.random() * 0.7 });
-  for (var st = 0; st < 30; st++) stars.push({ x: Math.random(), y: Math.random() * 0.7, r: 0.6 + Math.random() * 1.2, p: Math.random() * 6 });
+  (function () {
+    for (var c = 0; c < 2; c++) clouds.push({ x: Math.random() * 1400, y: 30 + Math.random() * 150, s: 0.6 + Math.random() * 0.7 });
+    for (var st = 0; st < 30; st++) stars.push({ x: Math.random(), y: Math.random() * 0.7, r: 0.6 + Math.random() * 1.2, p: Math.random() * 6 });
+  })();
 
   function reset() {
     S = { phase: "intro", t: 0, y: FLOOR - 24, vy: 0, dist: 0, speed: 0, spin: 0,
@@ -154,7 +179,7 @@
 
   // ---------- sound: a few synthesized blips, no files ----------
 
-  var AC = null;
+  var AC = null, wokeAt = -1e9;
   function audio() {
     if (muted) return null;
     if (!AC) {
@@ -162,11 +187,18 @@
       if (!Ctor) return null;
       try { AC = new Ctor(); } catch (e) { return null; }
     }
-    if (AC.state === "suspended") AC.resume();
     return AC;
   }
+  // A browser only lets sound start from a real press. A phone counts the finger lifting, not landing, so
+  // this is asked on every kind of press; until it takes, sounds are dropped, not saved up to play at once.
+  function wake() {
+    var ac = audio();
+    if (ac && ac.state !== "running") { wokeAt = Date.now(); try { ac.resume(); } catch (e) {} }
+  }
+  ["pointerup", "touchend", "click", "keydown"].forEach(function (type) { window.addEventListener(type, wake, { passive: true }); });
+  function ready(ac) { return !!ac && (ac.state === "running" || Date.now() - wokeAt < 400); }   // a press just asked: the sound is a moment away
   function tone(freq, dur, type, vol, slide, delay) {
-    var ac = audio(); if (!ac) return;
+    var ac = audio(); if (!ready(ac)) return;
     var t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
     o.type = type || "sine";
     o.frequency.setValueAtTime(freq, t);
@@ -177,7 +209,7 @@
     o.start(t); o.stop(t + dur + 0.02);
   }
   function thud(vol) {
-    var ac = audio(); if (!ac) return;
+    var ac = audio(); if (!ready(ac)) return;
     var len = Math.floor(ac.sampleRate * 0.18), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
     for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
     var src = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter();
@@ -224,11 +256,20 @@
 
   // ---------- layout ----------
 
+  var sized = "";
   function resize() {
     var w = canvas.clientWidth || 960;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = w;
-    H = Math.round(w < 620 ? Math.min(w * 1.15, 560) : Math.max(400, w * 0.5));
+    // Half as tall as it is wide, and never under 400 tall unless the window is too short to show the
+    // Punt button under it (312 is the room the stylesheet allows for everything else: style.css, .cc-field).
+    var floor = Math.min(400, Math.max(320, window.innerHeight - 312));
+    var h = Math.round(w < 620 ? Math.min(w * 1.15, 560) : Math.max(floor, w * 0.5));
+    // a phone on its side, or a short window: the whole field has to fit. (Upright, a phone's toolbar comes and goes; that is no reason to resize.)
+    if (window.innerWidth > window.innerHeight) h = Math.min(h, Math.max(280, window.innerHeight - 70));
+    if (sized === w + "x" + h + "x" + dpr) return;               // a phone's address bar sliding away is no reason to start over
+    if (sized && S && S.phase === "play") pause();               // the ball's place on the field moves with the width: give the player a beat
+    sized = w + "x" + h + "x" + dpr;
+    W = w; H = h;
     canvas.style.height = H + "px";
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
@@ -246,11 +287,6 @@
       out += (v < 16 ? "0" : "") + v.toString(16);
     }
     return out;
-  }
-  function rank(secs) {
-    var at = 0;
-    for (var i = 0; i < RANKS.length; i++) if (secs >= RANKS[i][0]) at = i;
-    return RANKS[at][1];
   }
   // where the field has scrolled to after t seconds in the air
   function distAt(t) {
@@ -300,18 +336,20 @@
   function levelOf(v) { var n = 1; while (v >= levelNeed(n)) n++; return n; }
   // The nearest thing this punt just missed, if it was close: that is the reason to go again.
   function nearMiss() {
-    var got = S.pts - S.base, n = spinsFor(got), best = null, rel, d;
+    var got = S.pts - S.base, n = spinsFor(got), near = null, rel, d;
     if (n < SPIN_AT.length) {
       d = SPIN_AT[n] - got; rel = d / (SPIN_AT[n] - (n ? SPIN_AT[n - 1] : 0));
-      if (rel < 0.3) best = { rel: rel, text: "Just " + Math.ceil(d) + " points from " + (n ? "another" : "a") + " spin" };
+      if (rel < 0.3) near = { rel: rel, text: "Just " + Math.ceil(d) + " points from " + (n ? "another" : "a") + " spin" };
     }
     d = QUARTER.secs - S.t % QUARTER.secs; rel = d / QUARTER.secs;
-    if (rel < 0.25 && (!best || rel < best.rel)) best = { rel: rel, text: d.toFixed(1) + " seconds from " + (S.q === 1 ? "halftime" : S.q >= 3 ? "the whistle" : "the end of the quarter") };
+    if (rel < 0.25 && (!near || rel < near.rel)) near = { rel: rel, text: d.toFixed(1) + " seconds from " + (S.q === 1 ? "halftime" : S.q >= 3 ? "the whistle" : "the end of the quarter") };
     d = levelNeed(levelOf(xp)) - xp; rel = d / (300 * levelOf(xp));
-    if (rel < 0.2 && (!best || rel < best.rel)) best = { rel: rel, text: "Only " + Math.ceil(d) + " points from level " + (levelOf(xp) + 1) };
-    return best ? best.text : "";
+    if (rel < 0.2 && (!near || rel < near.rel)) near = { rel: rel, text: "Only " + Math.ceil(d) + " points from level " + (levelOf(xp) + 1) };
+    return near ? near.text : "";
   }
-  var LIVES = 3, lives = LIVES, carry = 0, extraLives = 0, gameLives = LIVES, gamePunts = [];
+  // A life won at game over and not yet used when the page was left is saved. It joins the first game of
+  // the next visit, where it is drawn with the others, and is struck from the record when that game starts.
+  var LIVES = 3, savedLife = Math.min(2, load("rollcorn-hang-extra")), lives = LIVES + savedLife, carry = 0, extraLives = 0, gameLives = lives, gamePunts = [];
   var gameFeed = 0, gameSpins = 0, gameGolds = 0;      // what this game has put into the machine: corn in the jackpot, spins, golden spins
   // One power-up in the hand at a time. A slot win or a catch on the field puts it in the pocket; the space bar
   // (or a tap on its badge) uses it, whenever the player chooses, while the ball is up. A good run on the
@@ -352,11 +390,12 @@
   function start() {
     slotWrapUp(); flights.length = 0;
     reset();
+    if (savedLife) { savedLife = 0; save("rollcorn-hang-extra", 0); }
     if (lives <= 0 && extraLives > 0 && carry > 0) {       // a life won on the machine: the same game goes on
-      lives = extraLives; gameLives += extraLives; extraLives = 0; S.cont = true;
+      lives = extraLives; gameLives += extraLives; extraLives = 0; S.cont = true; save("rollcorn-hang-extra", 0);
       gameFeed = 0; gameSpins = 0; gameGolds = 0;
     } else if (lives <= 0) {                               // a new game
-      lives = LIVES + extraLives; gameLives = lives; extraLives = 0; carry = 0;
+      lives = LIVES + extraLives; gameLives = lives; extraLives = 0; carry = 0; save("rollcorn-hang-extra", 0);
       gameFeed = 0; gameSpins = 0; gameGolds = 0;
     }
     stepUp();
@@ -376,14 +415,14 @@
     if (Math.abs(g - SWEET) <= 0.07 + 0.08 * S.rookie) {
       S.kick = "perfect"; S.vy = PUNT * 1.14; S.safe = 1.6; S.pts += POINTS.perfect * (doubleNext ? 2 : 1); S.br.bonus = POINTS.perfect * (doubleNext ? 2 : 1);
       burst(BX, FEET - 34, 26); shake = 7; cheerAt = now;
-      floaters.push({ text: "PERFECT PUNT  +" + POINTS.perfect, life: 0, color: GOLD });
+      floaters.push({ text: "PERFECT PUNT  +" + POINTS.perfect * (doubleNext ? 2 : 1), life: 0, color: GOLD });
       tone(660, 0.12, "triangle", 0.12); tone(990, 0.2, "triangle", 0.12, 0, 0.09);
     } else if (g >= 0.5) {
       S.kick = "good"; S.vy = PUNT * (0.9 + 0.2 * (g - 0.5)); S.pts += POINTS.good * (doubleNext ? 2 : 1); S.br.bonus = POINTS.good * (doubleNext ? 2 : 1);
     } else {
       S.kick = "soft"; S.vy = PUNT * (0.62 + 0.5 * g);          // a soft one: it comes off low, and there is work to do
     }
-    if (doubleNext) { S.mult = 2; doubleNext = false; }    // won on the slots: this punt scores double
+    if (doubleNext) { S.mult = 2; doubleNext = false; save("rollcorn-hang-next2x", 0); }    // won on the slots: this punt scores double
     if (lives === 1 && carry > 0) {                        // the last life: everything on it counts double
       S.mult += 1; S.lastLife = true;
       floaters.push({ text: "LAST LIFE: DOUBLE POINTS", life: -0.6, color: GOLD });
@@ -408,15 +447,19 @@
   document.addEventListener("visibilitychange", function () { if (document.hidden) pause(); });
   window.addEventListener("blur", pause);
   document.addEventListener("keydown", function (e) {
+    if (e.repeat) return;                                  // a held key is one press
+    var tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (e.key === "p" || e.key === "P" || e.key === "Escape") { if (paused) resume(); else pause(); }
   });
   function tap() {
-    audio();
+    wake();
     if (paused) { resume(); return; }
     lastInput = now;
     if (S.phase === "intro" || (S.phase === "over" && S.wait > 0.25)) {
       if (slotVisible()) { putAway(); return; }            // first the machine steps aside, then the punter gets the tap
       if (now - awayAt < 0.35) return;
+      if (S.phase === "over" && S.rw < 1) return;          // the ball is still on its way back, and the gauge is not showing yet
       start(); return;
     }
     if (S.phase !== "play") return;
@@ -786,23 +829,31 @@
     var last = hist.slice(-3);
     return last.length === 3 && last.every(function (h) { return h.t < CARE.shortSecs; });
   }
-  var seen = load("rollcorn-hang-seen");
+  var seen = load("rollcorn-hang-seen"), welcome = 0;
   if (seen && Date.now() - seen >= CARE.awayDays * 864e5) {              // back after a few days: extra spins, and a warm machine
     spins += 3; hotLeft = 10; save("rollcorn-hang-spins", spins);
-    ui.msg = "WELCOME BACK:  3 SPINS"; ui.daily = true;
+    ui.msg = "WELCOME BACK:  3 SPINS"; ui.daily = true; welcome = 3;
   }
   save("rollcorn-hang-seen", Date.now());
   var SHOW = "CBSLPTUHGFK";                             // the order the prize list turns over in
   var PRIZE = { B: "BLOCKERS", S: "SUPER PUNT", L: "EXTRA LIFE", P: "CORN MAGNET", T: "TAILWIND", U: "BIG UPRIGHTS", H: "HELMET", G: "BONUS KICK", F: "+25 CORN AND 2X POINTS", K: "+15 CORN" };
-  var meter = load("rollcorn-hang-meter") % 10;        // pulls toward the next free spin
-  var streak = load("rollcorn-hang-streak");
-  if (loadText("rollcorn-hang-spinday") !== dayKey(0)) {                 // daily spins: three, and one more for each day in a row, up to seven
+  var streak = load("rollcorn-hang-streak"), spinDay = "";
+  // Daily spins: three, and one more for each day in a row, up to seven. (site.js tells the front page the
+  // same thing from the same two keys; if this rule changes, change it there too.)
+  function dailySpins() {
+    var back = welcome;                                    // the welcome-back spins are added into the message once, on the load they were given
+    welcome = 0;
+    spinDay = dayKey(0);
+    if (loadText("rollcorn-hang-spinday") === spinDay) return;
     streak = loadText("rollcorn-hang-spinday") === dayKey(1) ? Math.min(99, streak + 1) : 1;
     var daily = Math.min(7, 2 + streak);
     spins += daily;
-    save("rollcorn-hang-spinday", dayKey(0)); save("rollcorn-hang-spins", spins); save("rollcorn-hang-streak", streak);
-    ui.msg = streak > 1 ? "DAY " + streak + ":  " + daily + " SPINS" : daily + " DAILY SPINS"; ui.daily = true;
+    save("rollcorn-hang-spinday", spinDay); save("rollcorn-hang-spins", spins); save("rollcorn-hang-streak", streak);
+    if (ui.state !== "idle") return;                       // a result is on the machine: leave it there
+    ui.msg = back ? "WELCOME BACK:  " + (daily + back) + " SPINS" : streak > 1 ? "DAY " + streak + ":  " + daily + " SPINS" : daily + " DAILY SPINS";
+    ui.daily = true;
   }
+  dailySpins();
   refill();
   var markImg = new Image();                           // the Roll Corn mark: on the machine's sign, and as the jackpot symbol
   markImg.src = "mark-512.png";
@@ -826,11 +877,16 @@
   function slotDom() {
     var show = !away && slotTime();
     var turning = ui.state === "spinning" || ui.state === "respin" || ui.state === "flip", choosing = ui.state === "double" || ui.state === "pair";
+    var at = document.activeElement, was = keyed && (at === spinBtn || at === keepBtn || at === doubleBtn) ? at : null;
     spinBtn.hidden = !(show && (turning || ui.state === "kick" || (ui.state === "idle" && spins > 0)));
     spinBtn.textContent = ui.state === "kick" ? "Kick!" : turning ? "Stop the reel" : (golds > 0 ? "Golden spin" : "Spin" + (Math.min(ui.bet, spins) > 1 ? " x" + Math.min(ui.bet, spins) : "")) + " (" + spins + " left)";
     keepBtn.hidden = doubleBtn.hidden = !(show && choosing);
     keepBtn.textContent = "Keep " + ui.pend + " corn";
     doubleBtn.textContent = ui.state === "pair" ? "Try for three of a kind" : "Double or nothing";
+    if (was && was.hidden) {                               // the keyboard goes to the button that took its place: Keep, never the gamble
+      var next = !keepBtn.hidden ? keepBtn : !spinBtn.hidden ? spinBtn : null;
+      if (next) next.focus({ preventScroll: true });
+    }
   }
   function pull() {
     if (spins <= 0) return;
@@ -889,9 +945,9 @@
     }
     if (sp.life) {
       if (lives > 0) { if (lives < 5) { lives += 1; gameLives += 1; flyWin("L", "lives"); } }
-      else { if (extraLives < 2) flyWin("L", "lives"); extraLives = Math.min(2, extraLives + 1); label("Keep going"); }      // at game over: the same game goes on
+      else { if (extraLives < 2) flyWin("L", "lives"); extraLives = Math.min(2, extraLives + 1); save("rollcorn-hang-extra", extraLives); label("Keep going"); }      // at game over: the same game goes on
     }
-    if (sp.syms === "FFF") { doubleNext = true; flyWin("F", "next"); }
+    if (sp.syms === "FFF") { doubleNext = true; save("rollcorn-hang-next2x", 1); flyWin("F", "next"); }
     ui.winNow = sp.pay || boostValue(sp) ? now : -9;
     if (sp.big) {
       bank += sp.pay; earned += sp.pay;
@@ -911,12 +967,13 @@
     }
     save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned); save("rollcorn-hang-pot", pot);
     say("Corn slots: " + sp.text.toLowerCase().replace(/\s+/g, " ") + "." + (ui.state === "double" ? " Keep it, or double or nothing?" : ui.state === "pair" ? " Keep it, or give it up to respin the odd reel?" : ""));
-    board(); buildBalls();
+    board(); buildBalls(); buildShow();
   }
   // Give up the pair for one more turn of the odd reel. It has six symbols, so the chance of
   // completing the three is one in six, and the average prize for doing so is thirty: an even trade.
   function respin() {
     if (ui.state !== "pair") return;
+    save("rollcorn-hang-owed", 0);
     var sp = ui.sp, other;
     ui.pend = 0; sp.pay = 0;
     if (Math.random() < RESPIN) ui.landing = sp.pairSym;
@@ -946,9 +1003,10 @@
     }
   }
   function kickGauge() { return 0.5 - 0.5 * Math.cos((now - ui.kickAt) * 4.6); }
-  function kickNow() {
+  function kickNow(unseen) {                               // unseen: the game is taking the kick for a player who is not there to time it
     if (ui.state !== "kick") return;
-    var g = kickGauge(), base = Math.abs(g - 0.8) <= 0.08 ? KICK.perfect : g >= 0.5 ? KICK.good : KICK.short, pay = base * (ui.betNow || 1);
+    var g = kickGauge(), base = unseen === true ? KICK.good : Math.abs(g - 0.8) <= 0.08 ? KICK.perfect : g >= 0.5 ? KICK.good : KICK.short, pay = base * (ui.betNow || 1);
+    save("rollcorn-hang-owed", 0);
     ui.pend = pay; ui.doubles = 0; ui.state = "double"; ui.winNow = now;
     ui.msg = base === KICK.perfect ? "PERFECT KICK" : base === KICK.good ? "GOOD KICK" : "SHORT KICK";
     sfx.kick(); slotSfx.win(pay);
@@ -968,15 +1026,16 @@
     ui.msg = fresh ? "NEW BALL: " + fresh.toUpperCase() : "KEPT  +" + ui.pend;
     if (fresh) { sfx.gate(); burst(VW / 2, PANEL.y + 70, 40); }
     ui.state = "idle";
-    save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned);
+    save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned); save("rollcorn-hang-owed", 0);
     slotSfx.keep();
     say("Kept " + ui.pend + " corn." + (fresh ? " New ball: " + fresh + ". Pick it under the game." : ""));
-    board(); buildBalls();
+    board(); buildBalls(); buildShow();
   }
   // Double or nothing is an even coin flip, decided the moment it is taken. The reels spin to show it:
   // the same three come back for double, or they come up mixed and the win is gone.
   function doubleUp() {
     if (ui.state !== "double") return;
+    save("rollcorn-hang-owed", 0);
     ui.flipWin = Math.random() < 0.5;
     ui.state = "flip"; ui.t = 0; ui.until = 1.2;
     ui.pullNow = now;
@@ -1010,12 +1069,12 @@
     if (ui.state === "spinning") { ui.stopped = 3; settle(); }
     if (ui.state === "respin") landRespin();
     if (ui.state === "flip") landFlip();
-    if (ui.state === "kick") kickNow();
+    if (ui.state === "kick") kickNow(true);
     if (ui.state === "double" || ui.state === "pair") keep();
   }
   // a tap on the machine: which part was it
   function slotTap(side) {
-    audio();
+    wake();
     lastInput = now;
     if (ui.state === "spinning") stopReel();
     else if (ui.state === "kick") kickNow();
@@ -1058,7 +1117,8 @@
     if (ui.stopped >= 3) settle();
   }
   spinBtn.addEventListener("click", function () { slotTap("main"); });
-  keepBtn.addEventListener("click", keep);
+  // The press that stopped the last reel must not also answer the question that reel raised.
+  keepBtn.addEventListener("click", function () { if (now - Math.max(ui.winNow || -9, ui.quietAt || -9) > 0.4) keep(); });
   doubleBtn.addEventListener("click", function () { if (ui.state === "pair") respin(); else doubleUp(); });
 
   function finish() {
@@ -1199,12 +1259,19 @@
     { id: "gates", n: 3, text: "Kick 3 through the uprights", short: "Uprights" },
     { id: "close", n: 5, text: "Make 5 close calls", short: "Close calls" },
     { id: "air", n: 60, text: "Spend 60 seconds in the air", short: "Seconds up" },
-    { id: "kern", n: 40, text: "Collect 40 ears of corn", short: "Corn" },
+    { id: "kern", n: 40, text: "Collect 40 corn", short: "Corn" },
     { id: "quarters", n: 4, text: "Finish 4 quarters", short: "Quarters" },
-    { id: "caught", n: 3, text: "Catch 3 boosts mid-punt", short: "Boosts caught" }
+    { id: "caught", n: 3, text: "Catch 3 power-ups mid-punt", short: "Power-ups caught" }
   ];
-  var goalKey = dayKey(0).replace("-day-", "-goal-");
-  var goal = GOALS[Math.floor(Date.now() / 864e5) % GOALS.length], goalHad = loadText(goalKey), goalDone = goalHad === "done", goalN = goalDone ? goal.n : Math.min(goal.n, parseFloat(goalHad) || 0);
+  var goalKey, goal, goalDone, goalN;
+  function goalToday() {                                   // the goal goes by the player's own date, as its saved count does
+    goalKey = dayKey(0).replace("-day-", "-goal-");
+    goal = GOALS[Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5) % GOALS.length];
+    var had = loadText(goalKey).split("|");                // "which goal | how far": a count is never read against another goal
+    goalDone = had[had.length - 1] === "done";
+    goalN = goalDone ? goal.n : had[0] === goal.id ? Math.min(goal.n, parseFloat(had[1]) || 0) : 0;
+  }
+  goalToday();
   function goalShow() {
     goalEl.textContent = goalDone ? "Done" : Math.floor(goalN) + " / " + goal.n; goalEl.title = goal.text;
     var gl = document.getElementById("cc-goal-label"); if (gl) gl.textContent = "Goal: " + goal.short.toLowerCase();
@@ -1212,8 +1279,8 @@
   function goalCount() {                                   // after each punt
     if (goalDone) return false;
     goalN += { gates: S.gates, close: S.closes, air: S.t, kern: Math.max(0, S.got), quarters: S.q, caught: S.caught || 0 }[goal.id] || 0;
-    if (goalN >= goal.n) { goalDone = true; goalN = goal.n; spins += 2; save("rollcorn-hang-spins", spins); save(goalKey, "done"); goalShow(); return true; }
-    save(goalKey, goalN.toFixed(1)); goalShow();
+    if (goalN >= goal.n) { goalDone = true; goalN = goal.n; spins += 2; save("rollcorn-hang-spins", spins); save(goalKey, goal.id + "|done"); goalShow(); return true; }
+    save(goalKey, goal.id + "|" + goalN.toFixed(1)); goalShow();
     return false;
   }
   // A challenge: a shared link carries the score to beat.
@@ -1223,7 +1290,7 @@
   var tutor = played === 0, tutorStep = 0;
   function tutorText() {
     if (!tutor || S.phase !== "play") return "";
-    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    var touch = COARSE;
     if (tutorStep === 0) { if (S.taps.length >= 3) tutorStep = 1; return touch ? "TAP TO RISE" : "CLICK TO RISE"; }
     if (tutorStep === 1) { if (S.floating) S.floated = (S.floated || 0) + 1; if ((S.floated || 0) > 25 || S.t > 9) { tutorStep = 2; if (!pocket) { pocket = "B"; kitSave(); } } return "HOLD AFTER A " + (touch ? "TAP" : "CLICK") + " TO FLOAT"; }
     if (tutorStep === 2) { if (!pocket) tutorStep = 3; return (touch ? "TAP THE BADGE TO USE YOUR " : "PRESS SPACE TO USE YOUR ") + (POWERS[pocket] || "POWER-UP"); }
@@ -1247,14 +1314,14 @@
   function buildCost(i) { return Math.round(BUILD[i][1] * (built[i] + 1) * (1 + 0.5 * (stadium - 1)) / 10) * 10; }
   function buildShow() {
     if (!buildEl) return;
-    var done = built.reduce(function (a, b) { return a + b; }, 0);
+    var done = built.reduce(function (a, b) { return a + b; }, 0), had = [].indexOf.call(buildEl.children, document.activeElement);
     buildEl.textContent = "";
     BUILD.forEach(function (it, i) {
       var b = document.createElement("button"), full = built[i] >= 3, cost = buildCost(i);
       b.type = "button"; b.className = "cc-mini cc-ball";
       b.textContent = full ? it[0] + " \u00B7 built" : it[0] + " " + built[i] + "/3 \u00B7 " + cost.toLocaleString("en-US") + " corn";
-      b.disabled = full || bank < cost;
-      b.setAttribute("aria-pressed", full ? "true" : "false");
+      // greyed, not disabled: a disabled button drops the keyboard's focus, and a press on this one does nothing anyway
+      b.setAttribute("aria-disabled", full || bank < cost ? "true" : "false");
       b.addEventListener("click", function () {
         if (built[i] >= 3 || bank < buildCost(i)) return;
         bank -= buildCost(i); built[i] += 1; spins += 1;
@@ -1267,9 +1334,11 @@
       });
       buildEl.appendChild(b);
     });
+    if (keyed && had >= 0 && buildEl.children[had]) buildEl.children[had].focus({ preventScroll: true });   // the keyboard stays where it was
     if (buildNote) buildNote.textContent = "Stadium " + stadium + ": " + done + " of 15 built. Each build pays a spin; finish all 15 for 10 more.";
   }
-  function label(text, off) { btn.textContent = text; btn.disabled = !!off; }
+  // "off" greys the button without disabling it: a disabled button drops the keyboard's focus, and a press there does nothing anyway
+  function label(text, off) { btn.textContent = text; btn.setAttribute("aria-disabled", off ? "true" : "false"); }
   function say(text) { statusEl.textContent = text; }
   function board() {
     slotDom();
@@ -1285,7 +1354,11 @@
   // ---------- the mandala: one petal for every punt today, as long as the punt hung,
   //            coloured by what brought it down
   function mandalaKey() { return dayKey(0).replace("-day-", "-mandala-"); }
-  function todayPetals() { try { return JSON.parse(loadText(mandalaKey()) || "[]"); } catch (e) { return []; } }
+  function todayPetals() {
+    var p = [];
+    try { p = JSON.parse(loadText(mandalaKey()) || "[]"); } catch (e) {}
+    return Array.isArray(p) ? p.filter(function (pt) { return Array.isArray(pt); }) : [];
+  }
   function drawMandala() {
     var m = mandala.getContext("2d"), petals = todayPetals(), n = Math.max(petals.length, 12), size = mandala.width, c = size / 2;
     var bestT = 0, i;
@@ -1312,7 +1385,8 @@
     }
     m.fillStyle = "#FFCD00"; m.strokeStyle = "#000"; m.lineWidth = 2.5;
     m.beginPath(); m.arc(c, c, 13, 0, Math.PI * 2); m.fill(); m.stroke();
-    mandalaNote.textContent = petals.length ? petals.length + (petals.length === 1 ? " punt" : " punts") + " today. Longest " + bestT.toFixed(1) + " seconds." : "Your first punt today starts it.";
+    var day = dayStats(0), all = Math.max(petals.length, day.count), longest = Math.max(bestT, day.best);     // the picture keeps 72 petals; the day keeps count of them all
+    mandalaNote.textContent = petals.length ? all + (all === 1 ? " punt" : " punts") + " today. Longest " + longest.toFixed(1) + " seconds." : "Your first punt today starts it.";
     saveBtn.hidden = !petals.length;
   }
   saveBtn.addEventListener("click", function () {
@@ -1322,26 +1396,33 @@
     a.click();
   });
   function buildBalls() {
+    var had = [].indexOf.call(ballsEl.children, document.activeElement);
     ballsEl.textContent = "";
     BALLS.forEach(function (it) {
       var b = document.createElement("button"), open = earned >= it.need;
       b.type = "button";
       b.className = "cc-mini cc-ball";
       b.disabled = !open;
-      b.textContent = open ? it.name : it.name + " · " + it.need.toLocaleString("en-US") + " corn";
+      b.textContent = open ? it.name : it.name + ": earn " + it.need.toLocaleString("en-US") + " corn";
       b.setAttribute("aria-pressed", ballId === it.id ? "true" : "false");
       b.addEventListener("click", function () { ballId = it.id; save("rollcorn-hang-ball", it.id); buildBalls(); });
       ballsEl.appendChild(b);
     });
+    if (keyed && had >= 0 && ballsEl.children[had] && !ballsEl.children[had].disabled) ballsEl.children[had].focus({ preventScroll: true });
   }
 
   canvas.addEventListener("pointerdown", function (e) {
+    if (e.button) return;                                  // only the main button, or a finger, plays
     e.preventDefault();
     downY = e.clientY; pressed = true;
     if (paused) { resume(); return; }
     var box = canvas.getBoundingClientRect(), px = (e.clientX - box.left) / U, py = (e.clientY - box.top) / U;
     if (slotVisible() && px > VW / 2 - PANEL.w / 2 && px < VW / 2 + PANEL.w / 2 + 34 && py > PANEL.y && py < PANEL.y + PANEL.h) {
-      if (ui.auto) { ui.auto = false; tone(300, 0.08, "sine", 0.06); board(); return; }      // any tap ends an auto run
+      if (S.phase === "over" && S.wait < 0.5) return;        // the machine has only just come up under the player's thumb
+      if (ui.auto) {                                       // any tap ends an auto run; one on a bonus kick still kicks
+        ui.auto = false; tone(300, 0.08, "sine", 0.06); board();
+        if (ui.state !== "kick") return;
+      }
       if (ui.state === "idle" && spins > 0 && px > VW / 2 + PANEL.w / 2 - 6 && py > PANEL.y + 40 && py < PANEL.y + 150) {
         ui.grab = true; ui.grabY = py; ui.lever = 0; lastInput = now;                        // a hand on the lever
         return;
@@ -1355,7 +1436,10 @@
         if (golds > 0) tone(240, 0.08, "sine", 0.05);             // a golden spin is always pulled on its own
         else { ui.bet = ui.bet % Math.min(3, spins) + 1; tone(500 + ui.bet * 140, 0.06, "triangle", 0.08); }   // one, two, three, and round again
         board();
-      } else if (ui.state === "idle" && spins <= 0) tap(); else slotTap(px > VW / 2 ? "right" : "left");
+      } else if (ui.state === "idle" && spins <= 0) tap();
+      else if (ui.state === "pair" || ui.state === "double") {
+        if (py > PANEL.y + 147 && py < PANEL.y + 185 && now - Math.max(ui.winNow || -9, ui.quietAt || -9) > 0.4) slotTap(px > VW / 2 ? "right" : "left");
+      } else slotTap(px > VW / 2 ? "right" : "left");
       return;
     }
     var pa = pocketAt();
@@ -1363,8 +1447,9 @@
     held = true;
     tap();
   });
-  btn.addEventListener("pointerdown", function () { held = true; });
-  btn.addEventListener("click", tap);
+  var pressedAt = -1e9;
+  btn.addEventListener("pointerdown", function (e) { if (e.button) return; pressedAt = Date.now(); held = true; tap(); });
+  btn.addEventListener("click", function () { if (Date.now() - pressedAt > 700) tap(); });
   var downY = 0, pressed = false;
   window.addEventListener("pointerup", function () {
     held = false; diving = false; pressed = false;
@@ -1374,13 +1459,29 @@
       ui.lever = 0;
     }
   });
-  window.addEventListener("pointercancel", function () { held = false; diving = false; pressed = false; });
+  window.addEventListener("pointercancel", function () { held = false; diving = false; pressed = false; ui.grab = false; ui.lever = 0; });
   canvas.addEventListener("pointermove", function (e) {                 // press and drag down to dive
     if (pressed && S.phase === "play" && e.clientY - downY > 34) { diving = true; held = false; }
     if (ui.grab) { var bx2 = canvas.getBoundingClientRect(); ui.lever = clamp(((e.clientY - bx2.top) / U - ui.grabY) / 50, 0, 1); }
   });
-  window.addEventListener("blur", function () { held = false; });
+  window.addEventListener("blur", function () { held = false; ui.grab = false; ui.lever = 0; });
+  // A win is never lost with the page. When the page is left for good, whatever is on the machine is settled
+  // the safe way. When it is only put aside (another tab, another app), reels still turning are brought to
+  // the stop they were always going to make, and a choice or a bonus kick is left for the player to come
+  // back to, with its worth noted in case the browser drops the page before they do.
+  window.addEventListener("pagehide", slotWrapUp);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) return;
+    if (ui.state === "spinning") { ui.stopped = 3; settle(); }
+    if (ui.state === "respin") landRespin();
+    if (ui.state === "flip") landFlip();
+    var owed = ui.state === "kick" ? KICK.good * (ui.betNow || 1) : ui.state === "double" || ui.state === "pair" ? ui.pend : 0;
+    if (owed > 0) save("rollcorn-hang-owed", owed);
+  });
+  function ownButton(el) { return !!(el && el.tagName === "BUTTON" && el.closest && el.closest("#game")); }
+  var spaceTaken = false;
   document.addEventListener("keyup", function (e) {
+    if (e.key === " " && spaceTaken) { spaceTaken = false; e.preventDefault(); }   // the press was the game's; the button under it is not pressed
     if (e.key === " " || e.key === "Enter" || e.key === "ArrowUp") held = false;
     if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") diving = false;
   });
@@ -1389,22 +1490,33 @@
   });
   document.addEventListener("keydown", function (e) {
     if (e.key !== " " && e.key !== "Enter" && e.key !== "ArrowUp") return;
-    var t = e.target && e.target.tagName;
-    if (t === "A" || t === "INPUT" || t === "TEXTAREA" || t === "SUMMARY" || (t === "BUTTON" && e.key !== "ArrowUp")) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target && e.target.tagName, playing = S.phase === "play" && !paused;
+    if (t === "A" || t === "INPUT" || t === "TEXTAREA" || t === "SUMMARY") return;
+    // In the air these keys are the game's, whichever of its buttons was clicked last. Otherwise a button keeps its own keys.
+    if (t === "BUTTON" && !(playing && ownButton(e.target))) {
+      if (e.repeat && ownButton(e.target)) e.preventDefault();          // a held Enter is one press, not a run of them
+      return;
+    }
+    if (!playing) {
+      if (e.key === "ArrowUp") return;                     // the page's own key until a punt is up
+      var box = canvas.getBoundingClientRect();
+      if (box.bottom < 80 || box.top > window.innerHeight - 80) return;     // the field is off screen: the key belongs to the page
+    }
     e.preventDefault();
+    if (e.key === " " && t === "BUTTON") spaceTaken = true;
     if (e.key === " " && S.phase === "play" && !paused) { if (!e.repeat) usePower(); return; }   // in the air, space is the power-up
     held = true;
     if (!e.repeat) tap();
   });
   function soundLabel() {
     soundBtn.textContent = muted ? "Sound off" : "Sound on";
-    soundBtn.setAttribute("aria-pressed", muted ? "false" : "true");
   }
   soundBtn.addEventListener("click", function () {
     muted = !muted;
     save("rollcorn-coffin-muted", muted ? 1 : 0);
     soundLabel();
-    if (!muted) sfx.kernel(0);
+    if (!muted) { wake(); sfx.kernel(0); }
   });
   shareBtn.addEventListener("click", function () {
     var url = "https://rollcorn.com/hang-time.html?beat=" + Math.max(1, Math.floor(S.pts));
@@ -1555,7 +1667,7 @@
       if (S.beatN % 8 === 7) tone(S.q % 2 ? 196 : 147, 0.16, "triangle", 0.03);
     }
     if (Math.floor(S.t / QUARTER.secs) > S.q) { S.q += 1; endQuarter(S.q); }
-    if (rival && !S.beatRival && S.pts > rival) {          // past the score on the challenge link
+    if (rival && !S.beatRival && S.base <= rival && S.pts > rival) {          // past the score on the challenge link, on the punt that passes it
       S.beatRival = true;
       floaters.push({ text: "CHALLENGE BEATEN!", life: -0.4, color: GOLD });
       sfx.gate(); fireworks(); burst(BX, S.y, 30);
@@ -1603,7 +1715,7 @@
       }
       if (o.x + o.w - S.dist < -160) { S.obs.splice(i, 1); continue; }
       if (o.down) continue;                             // flattened: nothing left to hit
-      if (S.blockT > 0 && o.kind !== "gate" && o.x - bx < 120) {     // the blockers get there first
+      if (S.blockT > 0 && o.kind !== "gate" && !o.passed && o.x - bx < 120) {     // the blockers get there first
         o.down = true; o.downAt = now; S.knocked += 1;
         addPts(BLOCK.knock);
         burst(o.x + o.w / 2 - S.dist, BASE - 50, 14); dust(o.x + o.w / 2 - S.dist, FEET, 10);
@@ -1669,7 +1781,7 @@
           S.got += pay;
           fillCob(pay);
           sfx.note(Math.min(10, 4 + S.closeRun));
-          floaters.push({ text: "CLOSE  +" + POINTS.close * Math.min(5, S.closeRun), life: 0.4, color: GOLD });
+          floaters.push({ text: "CLOSE  +" + POINTS.close * Math.min(5, S.closeRun) * S.mult, life: 0.4, color: GOLD });
           kernEl.textContent = (bank + S.got).toLocaleString("en-US");
         } else S.closeRun = 0;
         if (o.kind === "gate" && o.good) {
@@ -1768,7 +1880,7 @@
       if ((cr.x - bx) * (cr.x - bx) + (cr.y - by) * (cr.y - by) < 20 * 20) { hit = cr.bomb ? "Corn bombed by the mascot" : cr.punt ? "Hit by their punt" : "Flag on the play"; killer = null; }
     }
     if (!S.passedLong && S.bestWas > 2 && S.t > S.bestWas) S.passedLong = true;   // past the longest-hang line
-    if (!S.passedBest && S.bestPtsWas > 60 && S.pts > S.bestPtsWas) {
+    if (!S.passedBest && S.bestPtsWas > 0 && S.pts > S.bestPtsWas) {
       S.passedBest = true;
       sfx.gate(); burst(BX, S.y, 30); shake = 6;
       fireworks();
@@ -2625,7 +2737,7 @@
     ctx.save(); ctx.translate(at.x, at.y); ctx.scale(pulse, pulse); badge(pocket, 24); ctx.restore();
     if (!live) return;                                     // how to use it, while the ball is up
     ctx.font = "700 10px " + LABEL; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    var tag = window.matchMedia && window.matchMedia("(pointer: coarse)").matches ? "TAP" : "SPACE";
+    var tag = COARSE ? "TAP" : "SPACE";
     ctx.fillStyle = INK; rr(at.x - 22, at.y + 27, 44, 15, 6); ctx.fill();
     ctx.fillStyle = GOLD; ctx.fillText(tag, at.x, at.y + 35);
   }
@@ -2654,7 +2766,7 @@
       slotPanel();
       ctx.restore();
     }
-    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    var touch = COARSE;
     var lines = [title, "Tap when the arrow is on the gold"];
     if (pocket) lines.push((touch ? "In the air, tap the badge: " : "In the air, press space: ") + POWERS[pocket].toLowerCase());   // what the machine sent out with the punter
     else if (spins > 0) lines.push(spins + (spins === 1 ? " spin saved" : " spins saved") + " for after this punt");
@@ -2905,7 +3017,7 @@
 
   function draw() {
     ctx.save();
-    if (shake > 0.2) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    if (shake > 0.2 && !CALM) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     sky();
     if (S.star) {
       var sa = clamp(Math.min(S.star.life / 0.15, (0.9 - S.star.life) / 0.4), 0, 1), sx0 = S.star.x - S.star.life * 220, sy0 = S.star.y + S.star.life * 90;
@@ -3140,10 +3252,9 @@
     var vig = ctx.createRadialGradient(VW / 2, VH * 0.48, VH * 0.5, VW / 2, VH * 0.48, Math.max(VW, VH) * 0.78);
     vig.addColorStop(0, "rgba(0,0,0,0)"); vig.addColorStop(1, "rgba(0,0,0,.30)");
     ctx.fillStyle = vig; ctx.fillRect(0, 0, VW, VH);
-    if (flash > 0.01) { ctx.fillStyle = "rgba(255,255,255," + (flash * 0.6).toFixed(2) + ")"; ctx.fillRect(0, 0, VW, VH); }
+    if (flash > 0.01 && !CALM) { ctx.fillStyle = "rgba(255,255,255," + (flash * 0.6).toFixed(2) + ")"; ctx.fillRect(0, 0, VW, VH); }
 
     if (S.phase === "intro") {
-      var d0 = dayStats(0), d1 = dayStats(1), up = d0.count > 2 && d1.count > 2 && d0.sum / d0.count > d1.sum / d1.count;
       if (away) { handOff("Hang Time"); loaded(); return; }
       sign(["Hang Time", rival ? "A friend scored " + rival.toLocaleString("en-US") + ". Beat it." : goalDone ? (streak > 1 ? "Day " + streak + " in a row. Tomorrow: " + Math.min(7, 3 + streak) + " spins." : "Today's goal is done. Nice.") : "Today: " + goal.text.toLowerCase() + " for 2 spins", "Tap on the gold to punt"], 190, "gold");
       if (slotVisible()) { chips(true); slotPanel(); }
@@ -3206,7 +3317,12 @@
   board();
   goalShow();
   buildShow();
-  setInterval(function () { var was = spins; refill(); if (spins !== was) board(); }, 5000);
+  setInterval(function () {
+    var was = spins;
+    refill();
+    if (dayKey(0) !== spinDay && S.phase !== "play") { dailySpins(); goalToday(); goalShow(); drawMandala(); }   // midnight came with the page open
+    if (spins !== was) board();
+  }, 5000);
   buildBalls();
   drawMandala();
   requestAnimationFrame(frame);

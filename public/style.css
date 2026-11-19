@@ -1,77 +1,107 @@
 /* Roll Corn
-   The look borrows from the seed signs staked at the end of Iowa corn rows:
-   a flat yellow plaque, heavy black condensed lettering, a stake below it. */
+   Black and gold, with the green of the husk in the logo for whatever is fresh. The black bars and
+   cards carry the games, the top story and the lines; the white cards carry the reading. One drawing
+   repeats: the field itself, each sport's markings in gold line. */
 
 :root {
   --gold: #FFCD00;
-  --ink: #000000;
-  --paper: #FFFFFF;
-  --husk: #5F5F4C;      /* quiet text: timestamps, counts, footer */
-  --furrow: #E3E0D0;    /* hairlines between stories */
-  --stake: #000000;     /* the line running down from each sign */
-  --clock: #000000;     /* the time column in Just in */
-  --sign-text: #000000;
-  /* type: Antonio for display, Roboto for reading, Roboto Condensed for
-     tight labels, Zilla Slab as the accent */
+  --gold-deep: #7A5E00;   /* gold that can be read on white */
+  --black: #000;
+  --coal: #171717;        /* a raised panel on black */
+  --seam: #2E2E2E;        /* a hairline on black */
+  --ash: #B8B8AE;         /* quiet text on black */
+  --paper: #FFF;
+  --page: #F2F1EC;        /* behind the cards */
+  --rule: #E3E0D2;        /* a hairline on white */
+  --husk: #5C5C4A;        /* quiet text on white */
+  --fresh: #3FA34D;       /* the husk's green: new since the last visit, and a page that is up to date */
+  --fresh-deep: #1F6B31;  /* that green as text on white */
+  --focus: #000;          /* the keyboard's ring; the dark surfaces below turn it gold */
   --display: "Antonio", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --label: "Roboto Condensed", "Arial Narrow", "Roboto", sans-serif;
   --text: "Roboto", "Helvetica Neue", Arial, sans-serif;
-  --condensed: "Roboto Condensed", "Arial Narrow", "Roboto", sans-serif;
-  --slab: "Zilla Slab", Georgia, serif;
-  --measure: 36rem;
   --gutter: clamp(1rem, 4vw, 3rem);
-  --go: #2FB344;        /* the green of a button that starts something */
-  --hot: #D62828;       /* breaking, live, just in */
-  --page: #F1F1EC;      /* behind the cards */
-  --card: 0 1px 2px rgba(0, 0, 0, .08), 0 4px 14px rgba(0, 0, 0, .05);
-  color-scheme: light;   /* white page for everyone, whatever the device theme */
+  --gap: clamp(.75rem, 1.6vw, 1.25rem);
+  --radius: 12px;
+  --lift: 0 1px 2px rgba(0, 0, 0, .08), 0 6px 18px rgba(0, 0, 0, .06);
+  color-scheme: light;    /* a light page for everyone, whatever the device theme */
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 4rem; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--text);
-  font-size: 1rem;
-  line-height: 1.45;
-  -webkit-text-size-adjust: 100%;
+  background: var(--page);
+  color: var(--black);
+  font: 400 1rem/1.45 var(--text);
 }
 @media (min-width: 70rem) { body { font-size: 1.0625rem; } }
 
 /* the mouse pointer is the corn wheel; it grows over anything clickable.
-   The first line is for browsers that do not understand image-set. */
+   The first line of each pair is for browsers that do not understand image-set. */
 html {
-  cursor: url("cursor.png") 16 16, auto;
-  cursor: image-set(url("cursor.png") 1x, url("cursor@2x.png") 2x) 16 16, auto;
+  cursor: url("cursor.png") 12 12, auto;
+  cursor: image-set(url("cursor.png") 1x, url("cursor@2x.png") 2x) 12 12, auto;
 }
-a, button {
-  cursor: url("cursor-link.png") 22 22, pointer;
-  cursor: image-set(url("cursor-link.png") 1x, url("cursor-link@2x.png") 2x) 22 22, pointer;
+a, button, summary, label[for] {
+  cursor: url("cursor-link.png") 16 16, pointer;
+  cursor: image-set(url("cursor-link.png") 1x, url("cursor-link@2x.png") 2x) 16 16, pointer;
 }
+button:disabled, button[aria-disabled="true"] {
+  cursor: url("cursor.png") 12 12, default;
+  cursor: image-set(url("cursor.png") 1x, url("cursor@2x.png") 2x) 12 12, default;
+}
+input[type="search"] { cursor: text; }
 
 a { color: inherit; }
-a:focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
-}
+button { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.top, .jump, .scores, .lead, .odds, .promo, .page-head, .plot-head, .justin-title, .foot, .cc-stage { --focus: var(--gold); }
 
+.visually-hidden, .search-label {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .skip {
   position: absolute;
   left: -999px;
-  background: var(--ink);
-  color: var(--paper);
+  z-index: 20;
   padding: .6rem 1rem;
+  background: var(--gold);
+  color: #000;
+  font-weight: 700;
 }
-.skip:focus { left: var(--gutter); top: .5rem; z-index: 10; }
+.skip:focus { left: var(--gutter); top: .5rem; }
+
+/* the corn wheel: an ear with its husk rolled around it. The page's script turns it as the page scrolls. */
+.ear { display: inline-block; transform-origin: 50% 50%; }
+
+/* a sport's field, drawn in line behind a black card's words */
+.turf {
+  position: absolute;
+  top: 0; right: 0;
+  width: min(62%, 44rem);
+  height: 100%;
+  color: var(--gold);
+  opacity: .5;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%);
+  mask-image: linear-gradient(90deg, transparent, #000 55%);
+}
 
 /* ---------- the top bar: the name, small and loud, on black ---------- */
 
 .top { background: #000; color: #fff; }
 .top-inner {
+  position: relative;
   display: flex;
   align-items: center;
   gap: clamp(.75rem, 2vw, 1.5rem);
@@ -80,78 +110,80 @@ a:focus-visible {
   padding: .7rem var(--gutter) .55rem;
 }
 .wordmark {
-  font-family: var(--display);
   margin: 0;
   color: var(--gold);
-  font-weight: 700;
-  font-size: clamp(2.2rem, 6vw, 3.4rem);
-  line-height: .95;
+  font: 700 clamp(2.1rem, 6vw, 3.4rem)/.95 var(--display);
   text-transform: uppercase;
   white-space: nowrap;
-}
-/* the two O's are corn wheels: an ear with its husk rolled around it.
-   --roll is set from the scroll position so they turn as the page moves */
-.ear {
-  display: inline-block;
-  transform-origin: 50% 50%;
-  transform: rotate(var(--roll, 0deg));
-}
-.wordmark .ear {
-  width: .94em;
-  height: .94em;
-  margin: 0 -.01em;
-  vertical-align: -.07em;
-  animation: roll-in 1.2s cubic-bezier(.2, .7, .2, 1) backwards;
 }
 .wordmark-link { color: inherit; text-decoration: none; }
 .wordmark .word { display: inline-block; }
 .wordmark .word + .word { margin-left: .14em; }
+.wordmark .ear {
+  width: .94em; height: .94em;
+  margin: 0 -.01em;
+  vertical-align: -.07em;
+  animation: roll-in 1.2s cubic-bezier(.2, .7, .2, 1) backwards;
+}
 .wordmark .word + .word .ear { animation-delay: .12s; }
-@keyframes roll-in {
-  from { transform: rotate(-270deg); }
-  to { transform: rotate(0deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .wordmark .ear { animation: none; }
-}
+@keyframes roll-in { from { transform: rotate(-270deg); } }
 .tagline {
-  font-family: var(--condensed);
+  max-width: 27ch;
   margin: 0;
   padding-left: clamp(.75rem, 2vw, 1.5rem);
-  border-left: 2px solid #3A3A3A;
-  color: #C9C9BF;
-  font-size: .95rem;
-  font-weight: 700;
-  line-height: 1.2;
-  max-width: 20ch;
-  text-transform: uppercase;
-  letter-spacing: .03em;
+  border-left: 2px solid var(--seam);
+  color: var(--ash);
+  font: 700 .95rem/1.2 var(--label);
 }
 .updated {
-  font-family: var(--condensed);
   margin: 0 0 0 auto;
-  color: #C9C9BF;
-  font-size: .85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
+  color: var(--ash);
+  font: 700 .85rem/1.2 var(--label);
   white-space: nowrap;
 }
-.updated::before {            /* a live light */
+.updated::before {            /* a light that says the page is being kept up */
   content: "";
   display: inline-block;
   width: .6em; height: .6em;
   margin-right: .5em;
   border-radius: 50%;
-  background: var(--go);
-  box-shadow: 0 0 0 0 rgba(47, 179, 68, .7);
-  animation: live 2s infinite;
+  background: var(--fresh);
+  animation: live 2.4s infinite;
 }
-@keyframes live { 70% { box-shadow: 0 0 0 .5em rgba(47, 179, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(47, 179, 68, 0); } }
-@media (prefers-reduced-motion: reduce) { .updated::before { animation: none; } }
-@media (max-width: 40rem) { .tagline { display: none; } }
+@keyframes live { 0% { box-shadow: 0 0 0 0 rgba(63, 163, 77, .7); } 70%, 100% { box-shadow: 0 0 0 .5em rgba(63, 163, 77, 0); } }
+.updated.is-stale::before { background: #77776E; animation: none; }      /* a page this old is not live any more */
 
-/* ---------- sport jump bar ---------- */
+.search { flex: 0 1 15rem; margin: 0; }
+.updated + .search { margin-left: 0; }
+.top-inner > .search:first-of-type:nth-child(3) { margin-left: auto; }   /* no "Updated" on this page: the box takes the right */
+.search input {
+  width: 100%;
+  padding: .5rem .8rem .45rem 2.2rem;
+  border: 2px solid #666;
+  border-radius: 99px;
+  background: var(--coal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B8B8AE' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") .75rem 50% / 1rem no-repeat;
+  color: #fff;
+  font: 400 1rem/1.3 var(--text);          /* a full 16px: a phone zooms the page for anything smaller */
+}
+.search input::placeholder { color: var(--ash); opacity: 1; }
+.search input:focus-visible { outline: none; border-color: var(--gold); background-color: #000; }
+
+@media (max-width: 62rem) { .tagline { display: none; } }
+@media (max-width: 40rem) {
+  /* on a phone the bar is one row: the name, the light, and a search button that opens over the name */
+  .search { position: absolute; right: var(--gutter); top: 50%; width: 2.6rem; transform: translateY(-50%); transition: width .2s; }
+  .search input { padding-right: 0; color: transparent; }
+  .search input::placeholder { color: transparent; }
+  .search:focus-within, .search.has-term { width: calc(100% - 2 * var(--gutter)); }
+  .search:focus-within input, .search.has-term input { padding-right: .8rem; color: #fff; }
+  .search:focus-within input::placeholder { color: var(--ash); }
+  .updated { margin-right: 3.3rem; }
+  .updated-word { display: none; }
+  .top-inner > .wordmark { margin-right: auto; }
+}
+@media (max-width: 23.4rem) { .updated { display: none; } }
+
+/* ---------- the sport bar: it follows the reader down the page ---------- */
 
 .jump {
   position: sticky;
@@ -159,251 +191,410 @@ a:focus-visible {
   z-index: 5;
   background: #000;
   color: #fff;
+  border-top: 1px solid var(--seam);
+  border-bottom: 3px solid var(--gold);
 }
 .jump-inner {
   display: flex;
   align-items: center;
-  gap: clamp(.75rem, 2vw, 1.5rem);
+  gap: clamp(.6rem, 1.6vw, 1.25rem);
   max-width: 90rem;
   margin: 0 auto;
   padding: 0 var(--gutter);
 }
+.jump-home { flex: none; display: flex; }
+.jump-home .ear { width: 2.1rem; height: 2.1rem; }
 .jump-sports {
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: clamp(1rem, 2.5vw, 2rem);
+  gap: clamp(.9rem, 1.7vw, 1.6rem);
   overflow-x: auto;
+  scroll-padding-inline: 2.5rem;       /* a link the keyboard reaches stays clear of the fade */
   scrollbar-width: none;
 }
+/* when the links run past an edge, they fade there, so it reads as something to scroll */
+.jump-sports.more-right { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent); }
+.jump-sports.more-left { -webkit-mask-image: linear-gradient(90deg, transparent, #000 2.5rem); mask-image: linear-gradient(90deg, transparent, #000 2.5rem); }
+.jump-sports.more-left.more-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent); mask-image: linear-gradient(90deg, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent); }
 .jump-sports::-webkit-scrollbar { display: none; }
 .jump-sports a {
-  font-family: var(--condensed);
   flex: none;
-  padding: .8rem 0 .65rem;
+  padding: .85rem 0 .6rem;
   border-bottom: 4px solid transparent;
-  font-weight: 700;
-  font-size: 1rem;
+  color: #DCDCD4;
+  font: 700 .95rem/1.2 var(--label);
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: .03em;
   white-space: nowrap;
 }
-.jump-sports a:hover { border-bottom-color: var(--gold); }
-.jump a:focus-visible { outline-color: var(--gold); outline-offset: -3px; }
-.jump-home { flex: none; display: flex; align-items: center; }
-.jump-home .ear { height: 2.1rem; width: 2.1rem; }
-/* the Merch tab is a small seed sign, always in view at the right */
-.jump-merch {
-  font-family: var(--display);
+.jump-sports a:hover { color: #fff; border-bottom-color: var(--gold); }
+.jump-sports a[aria-current] { color: var(--gold); border-bottom-color: var(--gold); }
+.jump a:focus-visible, .foot a:focus-visible { outline-offset: -3px; }
+.jump-play {
   flex: none;
-  padding: .32em .62em .24em;
-  border-radius: 5px;
+  padding: .34em .8em .26em;
+  border-radius: 6px;
   background: var(--gold);
   color: #000;
-  font-weight: 700;
-  font-size: 1.15rem;
-  line-height: 1;
-  text-transform: uppercase;
+  font: 700 1.15rem/1 var(--display);
   text-decoration: none;
+  text-transform: uppercase;
 }
-.jump-merch:hover,
-.jump-merch[aria-current="page"] { background: #fff; }
+.jump-play:hover, .jump-play[aria-current] { background: #fff; }
+.jump a.jump-play:focus-visible { outline-offset: 2px; }                 /* a gold ring inside a gold button would not show */
 
-/* ---------- signs and stakes ---------- */
+/* ---------- the page ---------- */
 
 main {
   max-width: 90rem;
   margin: 0 auto;
-  padding: clamp(1.75rem, 4vw, 3.25rem) var(--gutter) 0;
+  padding: var(--gap) var(--gutter) 0;
 }
+main > * + * { margin-top: var(--gap); }
+main > [hidden]:first-child + * { margin-top: 0; }      /* the line for returning readers, before it has anything to say */
 
+/* a section's name: on a black header, with a gold notch */
 .sign {
-  font-family: var(--display);
-  display: inline-block;
   margin: 0;
-  padding: .3em .6em .22em;
-  background: var(--gold);
-  color: var(--sign-text);
-  border-radius: 5px;
-  font-weight: 700;
-  font-size: clamp(1.4rem, 2vw, 1.75rem);
-  line-height: 1;
+  padding-left: .6rem;
+  border-left: 5px solid var(--gold);
+  color: #fff;
+  font: 700 clamp(1.35rem, 2vw, 1.6rem)/1 var(--display);
   text-transform: uppercase;
-  letter-spacing: .01em;
   white-space: nowrap;
 }
+.sign a { color: inherit; text-decoration: none; }
+.sign a:hover { color: var(--gold); }
 
-/* the stake: a rule dropping from the sign, with the stories hung off it */
-.latest-body,
-.plot-body,
-.quiet {
-  margin: 0 0 0 .9rem;
-  padding: 1.1rem 0 .25rem 1.4rem;
-  border-left: 3px solid var(--stake);
+/* ---------- next up: the games ahead, each with its clock ---------- */
+
+.scores { display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; background: #000; color: #fff; box-shadow: var(--lift); }
+.scores-tag {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 .9rem;
+  background: var(--gold);
+  color: #000;
+  font: 700 .9rem/1 var(--label);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
 }
-
-/* ---------- a story ---------- */
-
-.stories { list-style: none; margin: 0; padding: 0; }
-.stories .story {
-  padding: .8rem 0;
-  border-top: 1px solid var(--furrow);
-  break-inside: avoid;
-}
-.story { max-width: var(--measure); }
-.story a,
-.brief a {
-  font-weight: 500;
-  font-size: 1.04em;
-  line-height: 1.28;
+.scores-row { display: flex; flex: 1; min-width: 0; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--seam) #000; }
+@media (hover: none) { .scores-row { scrollbar-width: none; } .scores-row::-webkit-scrollbar { display: none; } }   /* a finger needs no bar to scroll */
+.score {
+  flex: 1 0 16.5rem;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);       /* nothing in a tile can push past its edge */
+  grid-template-rows: auto 1fr auto;           /* tiles in a row keep their bottom lines level */
+  gap: .14rem;
+  padding: .65rem 1rem .6rem;
+  border-left: 1px solid var(--seam);
+  color: #fff;
+  font-family: var(--label);
   text-decoration: none;
-  text-wrap: pretty;
+  scroll-snap-align: start;
 }
-.story a:hover,
-.brief a:hover {
+.score:first-child { border-left: 0; }
+.score:hover { background: var(--coal); }
+.score:focus-visible { outline-offset: -3px; }
+.score-top, .score-foot { display: flex; justify-content: space-between; gap: 0 .75rem; color: var(--ash); font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.score-top b { min-width: 0; overflow: hidden; color: var(--gold); text-overflow: ellipsis; text-transform: uppercase; letter-spacing: .05em; }
+.score-foot { flex-wrap: wrap; align-self: end; }                /* a long line and its clock take a line each */
+.score-teams { overflow: hidden; font-size: 1.12rem; font-weight: 700; line-height: 1.3; }     /* "Away at Home" may take two lines; Iowa is never cut off */
+.score-teams i, .matchup i { margin: 0 .1em; color: var(--ash); font-size: .8em; font-style: normal; }
+.score-teams .is-iowa, .matchup .is-iowa { white-space: nowrap; }       /* the gold mark never ends one line with its name on the next */
+/* Iowa is picked out by a small gold mark beside the name; the name itself stays in plain white */
+.score-teams .is-iowa::before, .matchup .is-iowa::before, .lines .is-iowa th::before {
+  content: "";
+  display: inline-block;
+  width: .5em; height: .5em;
+  margin-right: .35em;
+  border-radius: 2px;
+  background: var(--gold);
+  vertical-align: .1em;
+}
+.score-clock b { font-variant-numeric: tabular-nums; }
+.score-clock b { margin-left: .3em; color: #fff; font-size: .95rem; }
+.score-clock b:empty { display: none; }
+.score-clock b.is-live { color: var(--fresh); }
+/* the day of a game: the strip says so, and the game itself is lit */
+.score.is-today { background: linear-gradient(90deg, rgba(255, 205, 0, .2), transparent 70%) var(--coal); }
+.score.is-today .score-clock b:not(.is-live) { color: var(--gold); }
+@media (max-width: 34rem) { .scores-tag { writing-mode: vertical-rl; transform: rotate(180deg); padding: .5rem .35rem; font-size: .72rem; } }
+
+/* ---------- one line for a returning reader: what has come in since they were last here ---------- */
+
+.since { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; padding: .5rem .9rem .5rem .5rem; border-radius: 8px; background: var(--paper); box-shadow: var(--lift); }
+.since-tag {
+  flex: none;
+  padding: .42rem .7rem .34rem;
+  border: 0;
+  border-radius: 5px;
+  background: var(--fresh);
+  color: #000;
+  font: 700 1rem/1 var(--label);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+button.since-tag:hover { background: #000; color: #fff; }
+.since-say { margin: 0; font-weight: 500; }
+.since-where { display: flex; flex-wrap: wrap; gap: .35rem; margin-left: auto; }
+.since-where a { padding: .3rem .65rem .24rem; border: 2px solid #8A8A80; border-radius: 99px; font: 700 .85rem/1.2 var(--label); text-decoration: none; white-space: nowrap; }
+.since-where a:hover { border-color: #000; }
+.since.is-caught-up { padding-left: .9rem; }
+@media (max-width: 40rem) { .since-where { display: none; } }      /* the count is enough on a phone; the New filter is in the list below */
+.since.is-caught-up .since-say { color: var(--husk); }
+
+/* the same reader, back at a tab that has been sitting: a pill at the foot of the window offers what has come in */
+.refresh {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+  padding: .55rem 1rem .45rem;
+  border: 0;
+  border-radius: 99px;
+  background: var(--fresh);
+  color: #000;
+  font: 700 .95rem/1.2 var(--label);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+}
+.refresh:hover { background: #fff; }
+.refresh:focus-visible { outline-color: #000; box-shadow: 0 0 0 6px #fff, 0 4px 14px rgba(0, 0, 0, .3); }
+@media (max-width: 26rem) { .refresh { bottom: 4rem; } }       /* clear of the Top button */
+
+/* ---------- the top of the front page: one story on black, and the newest headlines ---------- */
+
+.latest { display: grid; gap: var(--gap); }
+@media (min-width: 58rem) { .latest { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } }
+.latest-main { display: grid; grid-template-rows: 1fr; gap: var(--gap); min-width: 0; }    /* the top story takes whatever height the column has left */
+.latest.is-open { align-items: start; }      /* "More" has made the list long: the top story stops following it (site.js) */
+
+.stories, .runners, .briefs { list-style: none; margin: 0; padding: 0; }
+.story, .brief > div { text-wrap: pretty; }
+.story a, .brief a { font-weight: 500; line-height: 1.28; text-decoration: none; }
+.story a:hover, .brief a:hover {
   text-decoration: underline;
   text-decoration-color: var(--gold);
   text-decoration-thickness: .16em;
   text-underline-offset: .18em;
 }
-.story a:visited,
-.brief a:visited { color: var(--husk); }
-.from {
-  margin: .25rem 0 0;
-  font-size: .82em;
-  color: var(--husk);
-}
-.source {
-  font-weight: 700;
-  color: var(--ink);
-  margin-right: .5em;
-}
+.story a:visited, .brief a:visited { color: var(--husk); }
+.from { margin: .25rem 0 0; color: var(--husk); font-size: .82em; }
+.source { margin-right: .5em; color: #000; font-weight: 700; }
+.kicker { margin: 0 0 .3rem; color: var(--gold-deep); font: 700 .78rem/1.2 var(--label); text-transform: uppercase; letter-spacing: .06em; }
+.tag { display: inline-block; margin-right: .6em; padding: .28em .6em .2em; border-radius: 4px; background: var(--gold); color: #000; }
 
-/* published since this reader's last visit */
+/* published since this reader's last visit: a green spot, the colour of the count at the top of the page */
 .is-new .source::before {
-  font-family: var(--condensed);
-  content: "New";
+  content: "";
   display: inline-block;
-  margin-right: .5em;
-  padding: .05em .42em 0;
-  border-radius: 3px;
-  background: var(--gold);
-  color: #000;
-  font-weight: 700;
+  width: .55em; height: .55em;
+  margin-right: .4em;
+  border-radius: 50%;
+  background: var(--fresh);
 }
-
-.quiet {
-  color: var(--husk);
-  max-width: var(--measure);
-}
-
-/* ---------- latest: the lead story beside a running clock ---------- */
-
-.latest { margin-bottom: clamp(2.75rem, 5vw, 4.5rem); }
-
-.latest-body {
-  display: grid;
-  gap: 2rem clamp(2rem, 4vw, 4rem);
-  align-items: start;
-}
-@media (min-width: 58rem) {
-  .latest-body { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.brief.is-new .source::before { content: none; }       /* the Latest list says it with the time, and with one line */
+.brief.is-new .when { color: var(--fresh-deep); }
+/* in a list that runs newest first, one line marks where the reader left off */
+.brief.was-here, .plot .stories .story.was-here { position: relative; margin-top: -1px; border-top: 2px solid var(--fresh); }
+.was-here::before {
+  content: "You were here";
+  position: absolute;
+  top: 0; right: 0;
+  transform: translateY(-55%);
+  padding-left: .5rem;
+  background: var(--paper);
+  color: var(--fresh-deep);
+  font: 700 .72rem/1.3 var(--label);
+  text-transform: uppercase;
+  letter-spacing: .05em;
 }
 
 .lead {
-  max-width: 20em;
-  font-size: clamp(2.1rem, 5vw, 4.4rem);
-  line-height: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: clamp(14rem, 26vw, 21rem);
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  box-shadow: var(--lift);
 }
-.lead a {
-  font-family: var(--display);
-  font-size: 1em;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
+.lead { isolation: isolate; }
+.lead > .turf { z-index: -1; width: min(58%, 42rem); opacity: .55; }       /* behind the words, in front of the black */
+.lead .kicker { margin: 0 0 auto; padding-bottom: 1.5rem; color: var(--gold); font-size: .95rem; }
+.lead > a {
+  max-width: 18em;
+  font: 700 clamp(1.9rem, 4.3vw, 3.7rem)/1.02 var(--display);
   text-wrap: balance;
 }
-.lead .from { font-size: 1rem; line-height: 1.45; margin-top: 1rem; }
-
-/* three runners-up under the lead */
-.runners {
-  list-style: none;
-  margin: clamp(1.5rem, 3vw, 2.25rem) 0 0;
-  padding: 1.1rem 0 0;
-  border-top: 3px solid var(--stake);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
-  gap: 1.1rem clamp(1.25rem, 2.5vw, 2.25rem);
+.lead > a::after { content: ""; position: absolute; inset: 0; }          /* the whole card opens the story */
+.lead > a:visited { color: #E6E6DE; }
+@supports selector(:has(a)) {                                               /* the ring goes round the whole card, inside it, where gold shows */
+  .lead > a:focus-visible { outline: none; }
+  .lead:has(> a:focus-visible) { outline: 3px solid var(--gold); outline-offset: -6px; }
 }
-.runners .story a {
-  font-family: var(--condensed); font-size: 1.12em; font-weight: 700; line-height: 1.2; }
+.lead .from { margin-top: 1rem; color: var(--ash); font-size: 1rem; }
+.lead .source { color: var(--gold); }
+.lead .also { position: relative; z-index: 1; margin: .7rem 0 0; padding-top: .7rem; border-top: 1px solid var(--seam); color: var(--ash); font-size: .9rem; }
+.lead .also a { color: #fff; font-weight: 700; text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: .2em; }
+.lead .also a:hover { color: var(--gold); }
 
-.justin-title {
-  font-family: var(--slab);
-  margin: 0;
-  padding-bottom: .45rem;
-  border-bottom: 3px solid var(--stake);
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.briefs { list-style: none; margin: 0; padding: 0; }
-.brief {
-  display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr);
-  column-gap: .9rem;
-  padding: .62rem 0;
-  border-bottom: 1px solid var(--furrow);
-}
-.brief .when {
-  font-family: var(--condensed);
-  padding-top: .08em;
-  color: var(--clock);
-  font-weight: 700;
-  font-size: 1.05em;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.brief a { font-size: 1em; line-height: 1.25; }
-.brief .from { margin-top: .12rem; }
-
-/* ---------- the field: one row per sport ---------- */
-
-.field {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
-  gap: clamp(2.75rem, 4vw, 3.75rem) clamp(1.75rem, 3vw, 3rem);
-  align-items: start;
-}
-
-.plot-head {
+.runners { display: grid; gap: var(--gap); }
+@media (min-width: 40rem) { .runners { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.runners .story {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: .2rem 1rem;
+  flex-direction: column;
+  padding: .95rem 1rem .9rem;
+  border-top: 4px solid #000;
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: var(--lift);
 }
-.plot-meta {
+.runners .story:hover { border-top-color: var(--gold); }
+.runners .story a { font: 700 1.14rem/1.2 var(--label); }
+.runners .story a::after { content: ""; position: absolute; inset: 0; }
+@supports selector(:has(a)) {
+  .runners .story a:focus-visible { outline: none; }
+  .runners .story:has(a:focus-visible) { outline: 3px solid #000; outline-offset: 3px; }
+}
+.runners .story .from { margin-top: auto; padding-top: .6rem; }
+
+.justin { border-radius: var(--radius); overflow: hidden; background: var(--paper); box-shadow: var(--lift); }
+.justin-title {
   margin: 0;
-  padding-bottom: .15rem;
-  font-size: .82em;
-  color: var(--husk);
+  padding: .75rem 1rem .65rem;
+  border-left: 5px solid var(--gold);
+  background: #000;
+  color: #fff;
+  font: 700 clamp(1.35rem, 2vw, 1.6rem)/1 var(--display);
+  text-transform: uppercase;
+}
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; padding: .7rem 1rem .1rem; }
+@media (hover: none) and (max-width: 40rem) {              /* on a phone one row, swiped sideways */
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+}
+.chip {
+  flex: none;
+  padding: .34rem .75rem .28rem;
+  border: 2px solid #8A8A80;
+  border-radius: 99px;
+  background: var(--paper);
+  font: 700 .85rem/1.2 var(--label);
   white-space: nowrap;
 }
-
-/* the first story in each sport carries the row */
-.story-top { padding-bottom: 1rem; }
-.story-top a {
-  font-family: var(--condensed);
-  font-size: 1.5em;
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -.005em;
-  text-wrap: balance;
+.chip:hover { border-color: #000; }
+.chip.is-on { border-color: #000; background: #000; color: var(--gold); }
+.briefs { padding: .2rem 1rem .3rem; }
+.justin .more-btn { width: auto; margin: .2rem 1rem 1rem; }
+.justin { display: flex; flex-direction: column; }
+.justin .briefs { flex: 1; }
+.brief {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  column-gap: .8rem;
+  padding: .62rem 0;
+  border-bottom: 1px solid var(--rule);
 }
-.story-top .from { margin-top: .5rem; }
+.brief:last-child { border-bottom: 0; }
+.brief .when { padding-top: .1em; color: var(--husk); font: 700 .95rem/1.25 var(--label); font-variant-numeric: tabular-nums; text-align: right; }
+.brief a { line-height: 1.25; }
+.brief .from { margin-top: .12rem; }
 
-/* the busiest sport runs the full width */
-.plot-wide { grid-column: 1 / -1; }
+/* ---------- the game, offered from the front page ---------- */
+
+.promo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .9rem 1.5rem;
+  padding: 1rem clamp(1rem, 2.5vw, 1.75rem);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: var(--lift);
+}
+.promo > * { position: relative; }
+.promo > .turf { position: absolute; right: 7rem; width: min(50%, 26rem); }
+.promo-text { display: grid; gap: .1rem; }
+.promo-title { color: var(--gold); font: 700 clamp(1.8rem, 3.5vw, 2.5rem)/1.05 var(--display); text-transform: uppercase; }
+.promo-sub { color: #DCDCD4; font-size: .98rem; }
+.promo-btn {
+  flex: none;
+  padding: .5em 1.4em .42em;
+  border-radius: 8px;
+  background: var(--gold);
+  color: #000;
+  font: 700 1.35rem/1 var(--display);
+  text-transform: uppercase;
+}
+.promo:hover .promo-btn { background: #fff; }
+.promo:focus-visible { outline-offset: -6px; }
+@media (max-width: 34rem) { .promo-btn { width: 100%; text-align: center; } .promo > .turf { right: 0; width: 70%; opacity: .3; } }
+
+/* ---------- every sport in its own card ---------- */
+
+.field { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--gap); }
+.field > .plot { grid-column: 1 / -1; }
+@media (min-width: 44rem) {
+  .field > .plot { grid-column: span 3; }
+  .field > .plot:last-child:nth-child(2n) { grid-column: 1 / -1; }             /* an odd one out takes the row */
+}
+@media (min-width: 68rem) {
+  .field > .plot, .field > .plot:last-child:nth-child(2n) { grid-column: span 2; }
+  .field > .plot:last-child:nth-child(3n + 2) { grid-column: 1 / -1; }
+  .field > .plot:last-child:nth-child(3n) { grid-column: span 4; }
+}
+.field > .plot.plot-wide { grid-column: 1 / -1; }
+
+.plot { display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; background: var(--paper); box-shadow: var(--lift); }
+.plot-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .2rem 1rem; padding: .7rem 1rem .6rem; background: #000; color: #fff; }
+.plot-meta { margin: 0; color: var(--ash); font: 700 .82rem/1.2 var(--label); white-space: nowrap; }
+.plot-body { flex: 1; display: flex; flex-direction: column; padding: 1rem 1rem .5rem; }
+.plot .stories .story { padding: .8rem 0; border-bottom: 1px solid var(--rule); break-inside: avoid; }
+.plot .stories .story:last-child { border-bottom: 0; }
+.story-top { padding-bottom: 1rem; border-bottom: 1px solid var(--rule); text-wrap: balance; }
+.story-top:has(+ .stories:empty) { border-bottom: 0; }
+.story-top a { font: 700 1.5em/1.1 var(--label); }
+.story-top .from { margin-top: .5rem; }
+.quiet { margin: 0; padding: 1rem 1rem 1.1rem; color: var(--husk); font-size: 1.05rem; font-weight: 500; }
+.quiet a { color: #000; text-decoration-color: var(--gold); text-decoration-thickness: .14em; text-underline-offset: .18em; }
+
+.more-link, .more-btn {
+  display: block;
+  width: 100%;
+  margin: auto 0 .5rem;
+  padding: .6rem 1rem .5rem;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: var(--paper);
+  color: #000;
+  font: 700 .95rem/1.2 var(--label);
+  text-align: center;
+  text-decoration: none;
+}
+.more-link:hover, .more-btn:hover { background: #000; color: var(--gold); }
+.plot-body > .stories + .more-link, .plot-body > .stories + .more-btn { margin-top: auto; }
+
+/* A card with the row to itself sets its top story beside its list. That is the first card from 58rem,
+   and from 68rem also a last card left alone on its row (it only has the row from there). */
 @media (min-width: 58rem) {
   .plot-wide .plot-body {
     display: grid;
@@ -411,549 +602,115 @@ main {
     column-gap: clamp(2rem, 4vw, 4rem);
     align-items: start;
   }
-  .plot-wide .story-top a {
-  font-family: var(--display); font-size: clamp(1.9rem, 2.9vw, 2.7rem); line-height: 1.03; }
-  .plot-wide .stories { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
-  .plot-wide .stories .story:first-child { border-top: 0; padding-top: 0; }
+  .plot-wide .story-top { border-bottom: 0; }
+  .plot-wide .story-top a { font: 700 clamp(1.9rem, 2.9vw, 2.7rem)/1.04 var(--display); }
+  .plot-wide .stories { grid-row: 1 / span 2; grid-column: 2; columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
+  .plot-wide .stories .story:first-child { padding-top: 0; }
+  .plot-wide .more-link { grid-column: 1; grid-row: 2; align-self: end; }
+  .stories.cols { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
 }
+@media (min-width: 68rem) {
+  .field > .plot:last-child:nth-child(3n + 2) .plot-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    column-gap: clamp(2rem, 4vw, 4rem);
+    align-items: start;
+  }
+  .field > .plot:last-child:nth-child(3n + 2) .story-top { border-bottom: 0; }
+  .field > .plot:last-child:nth-child(3n + 2) .stories { grid-row: 1 / span 2; grid-column: 2; columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
+  .field > .plot:last-child:nth-child(3n + 2) .stories .story:first-child { padding-top: 0; }
+  .field > .plot:last-child:nth-child(3n + 2) .more-link { grid-column: 1; grid-row: 2; align-self: end; }
+  .field > .plot:last-child:nth-child(3n + 2) .stories .story:last-child { border-bottom: 1px solid var(--rule); }
+}
+.stories.cols .story:first-child { padding-top: 0; }
+/* in two columns every row keeps its rule, so both columns end the same way */
+.plot-wide .stories .story:last-child, .stories.cols .story:last-child, .cc-news .stories .story:last-child { border-bottom: 1px solid var(--rule); }
 
-/* ---------- merch ---------- */
+/* ---------- an inside page: a black band with the page's name and its field ---------- */
 
-.merch-body {
-  margin: 0 0 0 .9rem;
-  padding: 1.1rem 0 .25rem 1.4rem;
-  border-left: 3px solid var(--stake);
-}
-.merch-intro {
-  font-family: var(--slab);
-  margin: 0 0 clamp(1.5rem, 3vw, 2.25rem);
-  max-width: 34ch;
-  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
-  font-weight: 700;
-  line-height: 1.12;
-  text-wrap: balance;
-}
-.products {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  gap: clamp(2rem, 3.5vw, 3rem) clamp(1.25rem, 2.5vw, 2.25rem);
-}
-.product-art {
-  display: block;
-  width: 100%;
-  height: auto;
-  /* a pale table for the product to lie on, lit from the middle */
-  background: radial-gradient(circle at 50% 42%, #FDFCF9 0%, #F3F1E8 55%, #E6E3D6 100%);
-  border-radius: 6px;
-}
-.art-type {
-  font-family: var(--display);
-  font-weight: 700;
-}
-.product-name {
-  font-family: var(--slab);
-  margin: .9rem 0 0;
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-.product-blurb { margin: .3rem 0 0; color: var(--husk); max-width: 30ch; }
-.product-soon,
-.product-buy {
-  font-family: var(--condensed);
-  display: inline-block;
-  margin: .7rem 0 0;
-  padding: .3em .6em .24em;
-  border-radius: 5px;
-  font-weight: 700;
-  line-height: 1;
-}
-.product-soon { border: 2px solid var(--ink); }
-.product-buy { background: var(--gold); color: #000; text-decoration: none; border: 2px solid #000; }
-.product-buy:hover { background: #000; color: var(--gold); }
-
-/* ---------- Hang Time, the punt game ---------- */
-
-.cc-title { text-transform: none; }
-.cc-corn { background: #000; color: var(--gold); padding: 0 .12em; border-radius: 3px; }
-.cc-body {
-  margin: 0 0 0 .9rem;
-  padding: 1.1rem 0 .25rem 1.4rem;
-  border-left: 3px solid var(--stake);
-}
-.cc-body .merch-intro { margin-bottom: 1rem; }
-.cc-board {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .4rem clamp(1.25rem, 4vw, 3rem);
-  margin: 0 0 .8rem;
-}
-.cc-board dt {
-  font-family: var(--condensed);
-  font-size: .82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--husk);
-}
-.cc-board dd {
-  font-family: var(--display);
-  margin: 0;
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.cc-board dd.cc-word { font-size: clamp(1.1rem, 2.1vw, 1.5rem); line-height: 1.35; }
-.cc-today { display: flex; flex-wrap: wrap; gap: 1rem 1.75rem; align-items: center; padding: 1rem 0 0; max-width: 68rem; }
-.cc-mandala { flex: none; width: min(100%, 15rem); height: auto; aspect-ratio: 1; }
-.cc-today > div { flex: 1 1 16rem; }
-.cc-you { margin: .6rem 0 0; }
-.cc-key { margin: .5rem 0 .8rem; color: var(--husk); font-size: .92rem; max-width: 38ch; }
-.cc-key span { white-space: nowrap; margin-right: .35em; }
-.cc-key span::before { content: ""; display: inline-block; width: .7em; height: .7em; margin-right: .3em; border-radius: 50%; background: var(--k); border: 1px solid #000; }
-.cc-field {
-  display: block;
-  width: 100%;
-  max-width: 68rem;
-  border: 4px solid var(--ink);
-  border-radius: 10px;
-  background: #BFE4F6;
-  box-shadow: 6px 6px 0 var(--gold), 6px 6px 0 3px var(--ink);
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.cc-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .8rem 1.25rem;
-  margin: 1rem 0 0;
-  max-width: 68rem;
-}
-.cc-go {
-  font-family: var(--display);
-  flex: none;
-  min-width: 9.5rem;
-  padding: .5em .9em .42em;
-  border: 3px solid #000;
-  border-radius: 6px;
-  background: var(--gold);
-  color: #000;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1;
-  text-transform: uppercase;
-}
-.cc-go:hover:not(:disabled) { background: #000; color: var(--gold); }
-.cc-go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-.cc-go:disabled { background: #fff; color: var(--husk); border-color: var(--husk); }
-.cc-lives { display: flex; gap: .15rem; align-items: center; height: 1em; }
-.cc-life { width: 1.05em; height: 1.05em; transition: opacity .3s, transform .3s, filter .3s; }
-.cc-life.is-lost { opacity: .22; filter: grayscale(1); transform: scale(.8) rotate(-25deg); }
-.cc-mini {
-  font-family: var(--condensed);
-  flex: none;
-  padding: .45em .7em .38em;
-  border: 2px solid #000;
-  border-radius: 5px;
-  background: #fff;
-  color: #000;
-  font-size: .95rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.cc-mini:hover { background: var(--gold); }
-.cc-slotbtn { background: var(--gold); }
-.cc-slotbtn:hover { background: #000; color: var(--gold); }
-.cc-mini:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-.cc-mini[hidden] { display: none; }
-.cc-mini:disabled { background: #F3F1E8; color: var(--husk); border-color: var(--furrow); }
-.cc-mini[aria-pressed="true"].cc-ball { background: #000; color: var(--gold); }
-.cc-balls { display: flex; flex-wrap: wrap; gap: .5rem; padding: .8rem 0 0; max-width: 68rem; }
-.cc-status { flex: 1 1 16rem; margin: 0; font-weight: 500; min-height: 2.9em; }
-.cc-how-title {
-  font-family: var(--slab);
-  margin: clamp(1.75rem, 3vw, 2.5rem) 0 0;
-  padding-bottom: .45rem;
-  border-bottom: 3px solid var(--stake);
-  max-width: var(--measure);
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.cc-details > summary { cursor: pointer; list-style-position: inside; }
-.cc-details > summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-.cc-how { margin: 0; padding: 0; list-style: none; max-width: var(--measure); }
-.cc-how li { padding: .62rem 0; border-bottom: 1px solid var(--furrow); }
-
-/* ---------- footer ---------- */
-
-.foot {
-  max-width: 90rem;
-  margin: clamp(3rem, 6vw, 5rem) auto 0;
-  padding: 1.5rem var(--gutter) 2.5rem;
-  color: var(--husk);
-  font-size: .88rem;
-}
-.foot::before {
-  content: "";
-  display: block;
-  border-top: 3px solid var(--stake);
-  margin-bottom: 1.5rem;
-}
-.foot p { max-width: 68ch; margin: 0 0 .6rem; }
-
-@media (max-width: 34rem) {
-  .latest-body, .plot-body, .quiet, .merch-body, .cc-body { margin-left: .5rem; padding-left: 1rem; }
-}
-
-
-/* ==========================================================================
-   The sports-desk look: a black bar, a running line of headlines, a top story
-   on black, and every sport in its own card.
-   ========================================================================== */
-
-body { background: var(--page); }
-
-/* ---------- the sport bar ---------- */
-
-.jump { background: #111; border-top: 1px solid #2A2A2A; border-bottom: 3px solid var(--gold); }
-.jump-sports a {
-  color: #D8D8D0;
-  font-size: .95rem;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  padding: .85rem 0 .6rem;
-  transition: color .15s;
-}
-.jump-sports a:hover, .jump-sports a.is-here { color: #fff; border-bottom-color: var(--gold); }
-.jump-merch { background: none; color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold); transition: background .15s, color .15s, transform .15s; }
-.jump-merch:hover, .jump-merch[aria-current="page"] { background: var(--gold); color: #000; }
-.jump-play { background: var(--go); color: #000; box-shadow: none; }
-.jump-play:hover, .jump-play[aria-current="page"] { background: #fff; color: #000; }
-.jump-merch:active { transform: scale(.96); }
-
-main { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
-
-/* ---------- the running line ---------- */
-
-.ticker {
-  display: flex;
-  align-items: stretch;
-  margin-bottom: clamp(1rem, 2vw, 1.5rem);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #000;
-  color: #fff;
-  box-shadow: var(--card);
-}
-.ticker-tag {
-  font-family: var(--condensed);
-  flex: none;
-  display: flex;
-  align-items: center;
-  padding: 0 .9rem;
-  background: var(--hot);
-  font-weight: 700;
-  font-size: .9rem;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  white-space: nowrap;
-}
-.ticker-view {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 2.5rem), transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 2.5rem), transparent);
-}
-.ticker-track { display: inline-flex; white-space: nowrap; animation: ticker 70s linear infinite; }
-.ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
-.ticker-run { display: inline-flex; }
-.ticker a { padding: .62rem 1.5rem; font-size: .95rem; font-weight: 500; text-decoration: none; }
-.ticker a:hover { text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: .2em; }
-.ticker a b { font-family: var(--condensed); margin-right: .6em; color: var(--gold); text-transform: uppercase; letter-spacing: .04em; }
-@keyframes ticker { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) {
-  .ticker-track { animation: none; }
-  .ticker-view { overflow-x: auto; }
-}
-
-/* ---------- the top of the page: one story on black, and the headline list ---------- */
-
-.latest { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
-.latest > .sign { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.latest-body { margin: 0; padding: 0; border: 0; gap: clamp(1rem, 2vw, 1.5rem); }
-.latest-main { display: grid; gap: clamp(1rem, 2vw, 1.5rem); }
-
-.lead {
+.page-head {
   position: relative;
-  max-width: none;
-  min-height: clamp(15rem, 34vw, 25rem);
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: clamp(1.25rem, 3vw, 2.5rem);
-  border-radius: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .3rem 1.25rem;
+  padding: clamp(1rem, 2.5vw, 1.6rem) clamp(1rem, 2.5vw, 1.75rem);
+  border-radius: var(--radius);
   overflow: hidden;
-  color: #fff;
-  background:
-    linear-gradient(115deg, transparent 0 62%, rgba(255, 205, 0, .95) 62% 64.5%, transparent 64.5% 67%, rgba(255, 205, 0, .5) 67% 68.2%, transparent 68.2%),
-    radial-gradient(120% 90% at 100% 0%, #3A3200 0%, transparent 60%),
-    #0A0A0A;
-  box-shadow: var(--card);
-  font-size: clamp(2rem, 4.6vw, 4rem);
-}
-.lead::before {
-  content: "Top story";
-  font-family: var(--condensed);
-  align-self: flex-start;
-  margin-bottom: auto;
-  padding: .3em .7em .25em;
-  border-radius: 4px;
-  background: var(--gold);
-  color: #000;
-  font-size: .95rem;
-  font-weight: 700;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-.lead a { max-width: 17em; margin-top: 1.5rem; text-shadow: 0 2px 18px rgba(0, 0, 0, .7); }
-.lead a:visited { color: #E9E9E2; }
-.lead a::after { content: ""; position: absolute; inset: 0; }        /* the whole card is the link */
-.lead .from { color: #C9C9BF; }
-.lead .source { color: var(--gold); }
-
-.runners { margin: 0; padding: 0; border: 0; gap: clamp(.75rem, 1.5vw, 1.25rem); }
-.runners .story, .stories .story { position: relative; }
-.runners .story {
-  padding: .95rem 1rem .9rem;
-  border: 0;
-  border-top: 4px solid #000;
-  border-radius: 10px;
-  background: var(--paper);
-  box-shadow: var(--card);
-  transition: transform .15s, border-color .15s;
-}
-.runners .story:hover { transform: translateY(-3px); border-top-color: var(--gold); }
-.runners .story a::after { content: ""; position: absolute; inset: 0; }
-
-.justin { border-radius: 12px; overflow: hidden; background: var(--paper); box-shadow: var(--card); }
-.justin-title {
-  font-family: var(--condensed);
-  padding: .75rem 1rem .65rem;
-  border: 0;
-  border-left: 5px solid var(--gold);
   background: #000;
   color: #fff;
-  font-size: 1.05rem;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  box-shadow: var(--lift);
 }
-.briefs { padding: .2rem 1rem .5rem; }
-.brief:last-child { border-bottom: 0; }
-.brief .when { color: var(--hot); }
-.brief a:hover, .story a:hover { text-decoration-color: var(--gold); }
+.page-head > * { position: relative; }
+.page-head > .turf { position: absolute; opacity: .6; }
+.crumb { flex: 1 0 100%; color: var(--ash); font: 700 .85rem/1.2 var(--label); text-decoration: none; }
+.crumb::before { content: "\2190\00A0"; content: "\2190\00A0" / ""; }
+.crumb:hover { color: var(--gold); }
+.page-title { margin: 0; font: 700 clamp(2.4rem, 7vw, 4.5rem)/.98 var(--display); text-transform: uppercase; }
+.page-meta { margin: 0 0 .55rem; color: var(--gold); font: 700 1rem/1.25 var(--label); }
+.page .lead { min-height: clamp(11rem, 22vw, 17rem); }
 
-/* ---------- the game, offered like a sportsbook offers a bet ---------- */
+/* ---------- the lines: the board at a sportsbook, in black and gold ---------- */
 
-.promo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem 1.5rem;
-  flex-wrap: wrap;
-  margin: 0 0 clamp(1.5rem, 3vw, 2.25rem);
-  padding: 1rem clamp(1rem, 2.5vw, 1.75rem);
-  border-radius: 12px;
-  border-left: 6px solid var(--go);
-  background: linear-gradient(100deg, #0A0A0A 45%, #12331C);
-  color: #fff;
-  text-decoration: none;
-  box-shadow: var(--card);
-  transition: transform .15s;
-}
-.promo:hover { transform: translateY(-2px); }
-.promo-text { display: grid; }
-.promo-kicker { font-family: var(--condensed); color: var(--go); font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-.promo-title { font-family: var(--display); font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 700; line-height: 1.05; text-transform: uppercase; }
-.promo-sub { color: #C9C9BF; font-size: .95rem; }
-.promo-btn {
-  font-family: var(--display);
-  flex: none;
-  padding: .5em 1.1em .42em;
-  border-radius: 8px;
-  background: var(--go);
-  color: #000;
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1;
-  text-transform: uppercase;
-}
-.promo:hover .promo-btn { background: #fff; }
-
-/* ---------- every sport in its own card ---------- */
-
-.field { gap: clamp(1rem, 2vw, 1.5rem); }
-.plot { border-radius: 12px; overflow: hidden; background: var(--paper); box-shadow: var(--card); scroll-margin-top: 4.5rem; }
-.plot-head { align-items: center; padding: .7rem 1rem .6rem; background: #000; color: #fff; }
-.plot .sign {
-  padding: 0 0 0 .6rem;
-  border-left: 5px solid var(--gold);
-  border-radius: 0;
-  background: none;
-  color: #fff;
-  font-size: clamp(1.35rem, 2vw, 1.6rem);
-}
-.plot-meta {
-  font-family: var(--condensed);
-  padding: .2rem .65rem .12rem;
-  border-radius: 99px;
-  background: var(--gold);
-  color: #000;
-  font-size: .78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-.plot-body, .plot .quiet { margin: 0; padding: 1rem 1rem .5rem; border: 0; }
-.plot .quiet { padding-bottom: 1.1rem; max-width: none; }
-.plot .story { max-width: none; }
-.plot .stories .story { transition: padding-left .15s; }
-.plot .stories .story:hover { padding-left: .5rem; box-shadow: inset 4px 0 0 var(--gold); }
-.plot .stories .story:hover a { text-decoration: none; }
-.is-new .source::before { background: var(--hot); color: #fff; }
-
-.foot { margin-top: clamp(2rem, 4vw, 3rem); }
-
-@media (max-width: 34rem) {
-  .lead { min-height: 13rem; }
-  .promo-btn { width: 100%; text-align: center; }
-}
-
-/* three across under the top story once there is room, one above another before that */
-.runners { grid-template-columns: 1fr; }
-@media (min-width: 40rem) { .runners { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-
-
-/* ---------- the lines: the board at a sportsbook ---------- */
-
-.odds { margin: 0 0 clamp(1rem, 2vw, 1.5rem); border-radius: 12px; overflow: hidden; background: #101010; color: #fff; box-shadow: var(--card); scroll-margin-top: 4.5rem; }
-.odds-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .2rem 1rem; padding: .7rem 1rem .6rem; background: #000; }
-.odds .sign { padding: 0 0 0 .6rem; border-left: 5px solid var(--go); border-radius: 0; background: none; color: #fff; font-size: clamp(1.35rem, 2vw, 1.6rem); }
-.odds-src { font-family: var(--condensed); margin: 0; color: #B9B9B0; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.odds-src .when { color: inherit; }
-.games { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1px; background: #2A2A2A; }
-.game { padding: .9rem 1rem 1rem; background: #101010; }
-.game-meta { font-family: var(--condensed); display: flex; flex-wrap: wrap; justify-content: space-between; gap: .1rem 1rem; margin: 0 0 .6rem; color: #B9B9B0; font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.game-meta b { color: var(--gold); }
-.lines { width: 100%; border-collapse: separate; border-spacing: .35rem; margin: -.35rem; }
-.lines thead th { font-family: var(--condensed); padding: 0 0 .1rem; color: #8E8E86; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+.odds { border-radius: var(--radius); overflow: hidden; background: #000; color: #fff; box-shadow: var(--lift); }
+.odds-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .2rem 1rem; padding: .75rem 1rem .65rem; border-bottom: 1px solid var(--seam); }
+.odds-src { margin: 0; color: var(--ash); font: 700 .82rem/1.2 var(--label); }
+.games { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 1px; }
+.game { container-type: inline-size; padding: 1.1rem 1rem; background: #000; box-shadow: 0 0 0 1px var(--seam); }   /* each card draws its own hairlines, so an empty place in the last row stays black */
+.game-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .1rem 1rem; margin: 0 0 .6rem; color: var(--ash); font: 700 .85rem/1.2 var(--label); }
+.game-meta b { color: var(--gold); text-transform: uppercase; letter-spacing: .05em; }
+.matchup { margin: 0; font: 700 clamp(1.3rem, 2.2vw, 1.65rem)/1.15 var(--label); }
+.read { margin: .35rem 0 .85rem; color: #DCDCD4; font-size: .95rem; }
+.prob { display: flex; height: 1.7rem; border-radius: 6px; overflow: hidden; background: #3A3A3A; font: 700 .9rem/1.7rem var(--label); }
+.prob span { padding: 0 .55rem; white-space: nowrap; }
+.prob-a { min-width: max-content; background: #5A5A54; }      /* never narrower than its own number */
+.prob-h { flex: 1; text-align: right; }
+.prob .is-iowa { background: var(--gold); color: #000; }
+.prob-key { display: flex; justify-content: space-between; gap: .5rem; margin: .25rem 0 .9rem; color: var(--ash); font: 700 .75rem/1.2 var(--label); }
+.prob-key span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prob-key span:first-child, .prob-key span:last-child { flex: 0 1 30%; }
+.prob-key span:last-child { text-align: right; }
+.prob-key span:nth-child(2) { flex: 1 0 auto; text-align: center; }
+.lines-wrap { margin: -.35rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--seam) transparent; }   /* the cells' own spacing is taken back at the edges */
+.lines { width: 100%; border-collapse: separate; border-spacing: .35rem; }
+.lines thead th { padding: 0 0 .1rem; color: var(--ash); font: 700 .75rem/1.2 var(--label); text-align: center; text-transform: uppercase; letter-spacing: .05em; }
 .lines thead th:first-child { text-align: left; }
-.lines tbody th { font-family: var(--condensed); padding: .2rem .3rem .2rem 0; font-size: 1.15rem; font-weight: 700; text-align: left; line-height: 1.1; }
-.lines .is-iowa th { color: var(--gold); }
-.lines .rank { color: #B9B9B0; font-size: .8em; }
-.lines td { width: 23%; padding: .45rem .3rem .35rem; border-radius: 6px; background: #1E1E1E; text-align: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.lines td b { display: block; font-family: var(--condensed); font-size: 1.05rem; }
-.lines td small { display: block; min-height: 1em; color: var(--go); font-size: .78rem; font-weight: 700; }
-.lines td:last-child b { color: var(--go); padding: .42em 0; }
-.odds-none { margin: 0; padding: 1.1rem 1rem; color: #C9C9BF; }
-.odds-note { margin: 0; padding: .75rem 1rem .85rem; border-top: 1px solid #2A2A2A; color: #8E8E86; font-size: .78rem; line-height: 1.4; }
-.jump-sports a.jump-odds { color: var(--go); }
-
-
-/* ---------- finding things: search, the sport filter, show more, back to top ---------- */
-
-.search { margin: 0; flex: 0 1 15rem; }
-.search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.search input {
-  font: inherit;
-  width: 100%;
-  padding: .5rem .8rem .45rem 2.1rem;
-  border: 2px solid #3A3A3A;
-  border-radius: 99px;
-  background: #1A1A1A url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C9C9BF' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") .7rem 50% / 1rem no-repeat;
-  color: #fff;
-  font-size: .95rem;
+.lines tbody th { padding: .2rem .3rem .2rem 0; font: 700 1.05rem/1.1 var(--label); text-align: left; }
+.lines td { min-width: 4.4rem; padding: .45rem .3rem .35rem; border-radius: 6px; background: var(--coal); line-height: 1.15; text-align: center; font-variant-numeric: tabular-nums; }
+.lines tr:hover td { background: #262626; }
+.lines td b { display: block; font: 700 1.05rem/1.15 var(--label); white-space: nowrap; }
+.lines td small { display: block; min-height: 1em; color: var(--ash); font-size: .78rem; font-weight: 700; }
+@media (max-width: 30rem) { .lines td { min-width: 3.9rem; padding-inline: .15rem; } .lines tbody th { font-size: .98rem; } }
+@media (max-width: 22rem) { .lines td { min-width: 3.3rem; } }
+.lines td:last-child b { padding: .42em 0; }
+/* a game with the board to itself sets its numbers beside its words */
+@container (min-width: 50rem) {
+  .game-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
 }
-.search input::placeholder { color: #9A9A92; }
-.search input:focus { outline: none; border-color: var(--gold); background-color: #000; }
-@media (max-width: 46rem) {
-  .top-inner { flex-wrap: wrap; }
-  .updated { margin-left: auto; }
-  .search { flex: 1 0 100%; order: 3; }
-}
-.search-status { margin: 0 0 1rem; padding: .7rem 1rem; border-radius: 8px; border-left: 5px solid var(--gold); background: #000; color: #fff; font-weight: 500; }
-/* while searching, the page is just the matches */
-.is-searching .ticker, .is-searching .nextup, .is-searching .odds, .is-searching .promo, .is-searching .justin, .is-searching .more-btn, .is-searching .plot-meta { display: none; }
-.is-searching .latest-body { grid-template-columns: 1fr; }
-.is-searching .lead[hidden], .is-searching .story[hidden] { display: none; }
+.odds-none { margin: 0; padding: 1.1rem 1rem; color: #DCDCD4; font-size: 1.05rem; font-weight: 500; }
+.odds-help { border-top: 1px solid var(--seam); }
+.odds-help summary { padding: .7rem 1rem .6rem; color: var(--gold); font: 700 .95rem/1.2 var(--label); }
+.odds-help summary:focus-visible { outline-offset: -3px; }
+.odds-help dl { display: grid; grid-template-columns: auto 1fr; gap: .45rem 1rem; margin: 0; padding: 0 1rem 1rem; font-size: .9rem; }
+.odds-help dt { color: var(--gold); font: 700 .95rem/1.4 var(--label); }
+.odds-help dd { margin: 0; color: #DCDCD4; }
+@media (max-width: 34rem) { .odds-help dl { grid-template-columns: 1fr; gap: .1rem; } .odds-help dd { margin-bottom: .5rem; } }
+.odds-note { margin: 0; padding: .75rem 1rem .85rem; border-top: 1px solid var(--seam); color: var(--ash); font-size: .8rem; line-height: 1.4; }
+.odds .more-link { margin: 0; border: 0; border-top: 1px solid var(--seam); border-radius: 0; background: none; color: var(--gold); }
+.odds .more-link:hover { background: var(--coal); color: #fff; }
+.odds .more-link:focus-visible { outline-offset: -3px; }
 
-.chips { display: flex; gap: .4rem; padding: .7rem 1rem .1rem; overflow-x: auto; scrollbar-width: none; }
-.chips::-webkit-scrollbar { display: none; }
-.chip {
-  font-family: var(--condensed);
-  flex: none;
-  padding: .32rem .75rem .26rem;
-  border: 2px solid #D9D7CC;
-  border-radius: 99px;
-  background: var(--paper);
-  color: #000;
-  font-size: .82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  white-space: nowrap;
-}
-.chip:hover { border-color: #000; }
-.chip.is-on { border-color: #000; background: #000; color: var(--gold); }
+/* ---------- search: the page gives way to the headlines that match ---------- */
 
-/* the headline list is numbered, the way a most-read list is */
-.briefs { counter-reset: brief; }
-.brief { grid-template-columns: 2.1rem minmax(0, 1fr); column-gap: .8rem; align-items: start; }
-.brief:not([hidden]) { counter-increment: brief; }
-.brief::before {
-  content: counter(brief);
-  font-family: var(--display);
-  grid-row: 1 / span 2;
-  display: grid;
-  place-items: center;
-  height: 2.1rem;
-  border-radius: 6px;
-  background: #F1F1EC;
-  color: var(--hot);
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.brief > div { grid-column: 2; grid-row: 1; }
-.brief .when { grid-column: 2; grid-row: 2; padding: 0; color: var(--husk); font-size: .78rem; text-align: left; }
-.brief .when::after { content: " ago"; }
+.is-searching main > :not(.search-results) { display: none; }
+.search-results .plot-meta { color: var(--gold); }
+.search-results .kicker { margin-bottom: .15rem; }
+.search-back { padding: .34rem .8rem .28rem; border: 2px solid #8A8A80; border-radius: 99px; background: none; color: #fff; font: 700 .85rem/1.2 var(--label); white-space: nowrap; }
+.search-back:hover { border-color: var(--gold); color: var(--gold); }
 
-.more-btn {
-  font-family: var(--condensed);
-  display: block;
-  width: 100%;
-  margin: .4rem 0 .5rem;
-  padding: .6rem 1rem .5rem;
-  border: 2px solid #000;
-  border-radius: 8px;
-  background: var(--paper);
-  color: #000;
-  font-size: .9rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-}
-.more-btn:hover { background: #000; color: var(--gold); }
+/* ---------- back to top ---------- */
 
 .totop {
-  font-family: var(--condensed);
   position: fixed;
   right: 1rem;
   bottom: 1rem;
@@ -962,191 +719,157 @@ main { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
   border-radius: 99px;
   background: #000;
   color: var(--gold);
-  font-size: .85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  font: 700 .9rem/1.2 var(--label);
   text-decoration: none;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
   opacity: 0;
-  pointer-events: none;
+  visibility: hidden;
   transform: translateY(.5rem);
-  transition: opacity .2s, transform .2s;
+  transition: opacity .2s, transform .2s, visibility .2s;
 }
-.totop::before { content: "\2191  "; }
-.totop.is-up { opacity: 1; pointer-events: auto; transform: none; }
+.totop::before { content: "\2191\00A0"; content: "\2191\00A0" / ""; }
+.totop.is-up { opacity: 1; visibility: visible; transform: none; }
+.totop:focus-visible { outline-color: var(--gold); box-shadow: 0 0 0 3px #000, 0 4px 14px rgba(0, 0, 0, .3); }
 
-/* ---------- next up: the next game, in one line, the way a scoreboard strip reads ---------- */
+/* ---------- Hang Time, the punt game ---------- */
 
-.nextup {
-  font-family: var(--condensed);
-  display: flex;
-  align-items: center;
-  gap: .3rem 1rem;
-  flex-wrap: wrap;
-  margin: 0 0 .75rem;
-  padding: .6rem 1rem .5rem;
-  border-radius: 8px;
-  background: var(--paper);
-  color: #000;
-  font-size: .95rem;
-  font-weight: 700;
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-  box-shadow: var(--card);
-}
-.nextup b { padding: .2rem .55rem .12rem; border-radius: 4px; background: #000; color: var(--gold); font-size: .78rem; letter-spacing: .06em; }
-.nextup-game { font-size: 1.05rem; }
-.nextup [data-kick] { color: var(--husk); }
-.nextup em { padding: .16rem .5rem .1rem; border-radius: 4px; background: #F1F1EC; font-style: normal; font-variant-numeric: tabular-nums; }
-.nextup-go { margin-left: auto; color: #1E8A33; }
-.nextup-go::after { content: " \2192"; }
-.nextup:hover .nextup-go { text-decoration: underline; }
-
-/* ---------- the lines, second pass: each game says who is favored before it shows a number ---------- */
-
-.game { padding: 1.1rem 1rem 1.1rem; }
-.matchup { font-family: var(--display); margin: 0; font-size: clamp(1.5rem, 2.6vw, 1.9rem); font-weight: 700; line-height: 1.08; text-transform: uppercase; }
-.matchup .is-iowa { color: var(--gold); }
-.matchup i { font-family: var(--condensed); color: #8E8E86; font-size: .55em; font-style: normal; vertical-align: .22em; margin: 0 .15em; }
-.read { margin: .3rem 0 .85rem; color: #D8D8D0; font-size: .95rem; }
-.prob { display: flex; height: 1.7rem; border-radius: 6px; overflow: hidden; background: #3A3A3A; font-family: var(--condensed); font-size: .9rem; font-weight: 700; line-height: 1.7rem; }
-.prob span { padding: 0 .55rem; white-space: nowrap; }
-.prob-a { background: #5A5A54; color: #fff; }
-.prob-h { flex: 1; text-align: right; color: #fff; }
-.prob .is-iowa { background: var(--gold); color: #000; }
-.prob-key { font-family: var(--condensed); display: flex; justify-content: space-between; gap: .5rem; margin: .25rem 0 .9rem; color: #8E8E86; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.prob-key span:nth-child(2) { text-align: center; }
-.lines td { transition: background .15s; }
-.lines tr:hover td { background: #2A2A2A; }
-.odds-help { border-top: 1px solid #2A2A2A; }
-.odds-help summary { font-family: var(--condensed); padding: .7rem 1rem .6rem; color: var(--go); font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; cursor: inherit; }
-.odds-help dl { display: grid; grid-template-columns: auto 1fr; gap: .45rem 1rem; margin: 0; padding: 0 1rem 1rem; font-size: .88rem; }
-.odds-help dt { font-family: var(--condensed); color: var(--gold); font-weight: 700; text-transform: uppercase; }
-.odds-help dd { margin: 0; color: #D8D8D0; }
-@media (max-width: 34rem) { .odds-help dl { grid-template-columns: 1fr; gap: .1rem; } .odds-help dd { margin-bottom: .5rem; } }
-
-/* the board's cards need room for three price boxes; names give way before numbers do */
-.games { grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); }
-.lines { table-layout: auto; }
-.lines td { width: auto; min-width: 4.4rem; }
-.lines td b { white-space: nowrap; }
-.lines tbody th { font-size: 1.05rem; }
-.prob-key span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prob-key span:first-child, .prob-key span:last-child { flex: 0 1 30%; }
-.prob-key span:last-child { text-align: right; }
-.prob-key span:nth-child(2) { flex: 1 0 auto; }
-
-
-/* ---------- a site of pages: the bar marks the page, each page has a title band, the front page links onward ---------- */
-
-.jump-sports a[aria-current] { color: #fff; border-bottom-color: var(--gold); }
-.jump-sports a.jump-odds[aria-current] { color: var(--go); border-bottom-color: var(--go); }
-
-.page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .3rem 1rem;
-  margin: 0 0 clamp(1rem, 2vw, 1.5rem);
-  padding: clamp(1rem, 2.5vw, 1.6rem) clamp(1rem, 2.5vw, 1.75rem);
-  border-radius: 12px;
-  border-left: 8px solid var(--gold);
-  background: #000;
-  color: #fff;
-  box-shadow: var(--card);
-}
-.crumb { font-family: var(--condensed); flex: 1 0 100%; color: #B9B9B0; font-size: .82rem; font-weight: 700; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
-.crumb::before { content: "\2190  "; }
-.crumb:hover { color: var(--gold); }
-.page-title { font-family: var(--display); margin: 0 auto 0 0; font-size: clamp(2.4rem, 7vw, 4.5rem); font-weight: 700; line-height: .98; text-transform: uppercase; }
-.page .lead { margin-bottom: clamp(1rem, 2vw, 1.5rem); min-height: clamp(12rem, 24vw, 18rem); }
-.page .odds { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
-@media (min-width: 58rem) { .stories.cols { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); } }
-.stories.cols .story:first-child { border-top: 0; }
-
-.plot .sign a { color: inherit; text-decoration: none; }
-.plot .sign a:hover { color: var(--gold); }
-.more-link {
-  font-family: var(--condensed);
+.page-game { max-width: 74rem; }
+.cc { display: grid; gap: var(--gap); }
+.cc-stage { padding: clamp(.75rem, 2vw, 1.25rem); border-radius: var(--radius); background: #000; color: #fff; box-shadow: var(--lift); }
+.cc-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .5rem 2rem; margin: 0 0 .8rem; }
+.cc-name { margin: 0; font: 700 clamp(2rem, 5vw, 3rem)/.95 var(--display); text-transform: uppercase; }
+.cc-board { display: flex; flex-wrap: wrap; gap: .4rem clamp(1.25rem, 4vw, 3rem); margin: 0; }
+.cc-board dt { color: var(--ash); font: 700 .82rem/1.2 var(--label); text-transform: uppercase; letter-spacing: .04em; }
+.cc-board dd { margin: 0; color: var(--gold); font: 700 clamp(1.5rem, 3vw, 2.1rem)/1 var(--display); font-variant-numeric: tabular-nums; }
+.cc-field {
   display: block;
-  margin: .5rem 0 .5rem;
-  padding: .6rem 1rem .5rem;
-  border: 2px solid #000;
+  width: 100%;
+  /* the field is half as tall as it is wide; on a short window it narrows, down to 40rem by 20, so the
+     Punt button stays in view (hang-time.js, resize, lets the height follow) */
+  max-width: max(40rem, calc((100vh - 19.5rem) * 2));
+  margin: 0 auto;
   border-radius: 8px;
-  color: #000;
-  font-size: .9rem;
-  font-weight: 700;
-  text-align: center;
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: .05em;
+  background: #BFE4F6;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
-.more-link::after { content: " \2192"; }
-.more-link:hover { background: #000; color: var(--gold); }
-.more-link.on-dark { margin: 0; border: 0; border-top: 1px solid #2A2A2A; border-radius: 0; color: var(--go); }
-.more-link.on-dark:hover { background: #1E1E1E; color: #fff; }
-.is-searching .more-link, .is-searching .page-head .plot-meta { display: none; }
-
-/* a headline held back for the sport filter stays out of sight, and out of the count */
-.brief[hidden] { display: none; }
-
-
-/* ---------- the scoreboard strip: every upcoming game as a tile, the way a score bar runs across the top ---------- */
-
-.scores { display: flex; align-items: stretch; margin: 0 0 .75rem; border-radius: 10px; overflow: hidden; background: #000; box-shadow: var(--card); }
-.scores-tag {
-  font-family: var(--condensed);
+.cc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.25rem; margin: 1rem 0 0; }
+.cc-go {
   flex: none;
-  display: flex;
-  align-items: center;
-  padding: 0 .9rem;
+  min-width: 9.5rem;
+  padding: .5em .9em .42em;
+  border: 3px solid var(--gold);
+  border-radius: 6px;
   background: var(--gold);
   color: #000;
-  font-size: .9rem;
-  font-weight: 700;
+  font: 700 1.5rem/1 var(--display);
   text-transform: uppercase;
-  letter-spacing: .06em;
-  white-space: nowrap;
+  touch-action: manipulation;
 }
-.scores-row { display: flex; gap: 1px; flex: 1; min-width: 0; overflow-x: auto; background: #2A2A2A; scroll-snap-type: x proximity; scrollbar-width: none; }
-.scores-row::-webkit-scrollbar { display: none; }
-.score {
-  font-family: var(--condensed);
-  flex: 1 0 13.5rem;
-  max-width: 20rem;
-  display: grid;
-  gap: .12rem;
-  padding: .6rem .9rem .55rem;
-  background: #111;
-  color: #fff;
-  text-decoration: none;
-  scroll-snap-align: start;
-  transition: background .15s;
+.cc-go[aria-disabled="true"] { border-color: var(--seam); background: var(--coal); color: var(--ash); }
+@media (hover: hover) {
+  .cc-go:not([aria-disabled="true"]):hover { background: #fff; border-color: #fff; }
 }
-.score:hover { background: #1E1E1E; }
-.score-top { display: flex; justify-content: space-between; gap: .75rem; color: #B9B9B0; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
-.score-top b { color: var(--gold); }
-.score-team { display: flex; justify-content: space-between; gap: .75rem; font-size: 1.05rem; font-weight: 700; line-height: 1.25; }
-.score-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.score-team b { font-variant-numeric: tabular-nums; }
-.score-team.is-iowa { color: var(--gold); }
-.score-foot { color: var(--go); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-@media (max-width: 34rem) { .scores-tag { writing-mode: vertical-rl; transform: rotate(180deg); padding: .5rem .35rem; font-size: .75rem; } }
-.is-searching .scores { display: none; }
+.cc-status { flex: 1 1 16rem; margin: 0; min-height: 2.9em; color: #fff; font-weight: 500; }
+.cc-tools { display: flex; flex-wrap: wrap; gap: .5rem; }
+.cc-mini {
+  flex: none;
+  padding: .45em .7em .38em;
+  border: 2px solid #000;
+  border-radius: 5px;
+  background: #fff;
+  color: #000;
+  font: 700 .95rem/1 var(--label);
+  touch-action: manipulation;
+}
+@media (hover: hover) { .cc-mini:hover:not(:disabled):not([aria-pressed="true"]):not([aria-disabled="true"]) { background: var(--gold); } }
+.cc-mini:disabled, .cc-mini[aria-disabled="true"] { border-color: var(--rule); background: #F3F1E8; color: var(--husk); }
+.cc-stage .cc-mini { border-color: #fff; }
+.cc-stage .cc-slotbtn { border-color: var(--gold); background: var(--gold); }
+@media (hover: hover) { .cc-stage .cc-slotbtn:hover:not(:disabled) { background: #fff; border-color: #fff; } }
+.cc-ball[aria-pressed="true"] { background: #000; color: var(--gold); }
 
-/* ---------- front page polish: every top card says which sport it is ---------- */
+.cc-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--gap); margin: 0; }
+.cc-rules > div { padding: .9rem 1rem; border-top: 4px solid #000; border-radius: 10px; background: var(--paper); box-shadow: var(--lift); }
+.cc-rules dt { font: 700 1.2rem/1.1 var(--display); text-transform: uppercase; }
+.cc-rules dd { margin: .35rem 0 0; color: #222; font-size: .95rem; }
 
-.kicker { font-family: var(--condensed); margin: 0 0 .3rem; color: #9A6B00; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
-.lead .kicker { order: 0; margin: 1.25rem 0 0; color: var(--gold); font-size: .95rem; }
-.lead a { margin-top: .35rem; }
-.runners .story { display: flex; flex-direction: column; }
-.runners .story .from { margin-top: auto; padding-top: .6rem; }
+.cc-free { margin-bottom: 0; color: var(--husk); font-size: .9rem; }
+.cc-cards { display: grid; gap: var(--gap); }
 @media (min-width: 58rem) {
-  .latest-body { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
-  .lead { min-height: clamp(20rem, 30vw, 27rem); }
+  .cc-cards { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .cc-cards > :first-child { grid-row: span 2; }
+  .cc-news { grid-column: 1 / -1; }
+  .cc-news .stories { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
+  .cc-news .stories .story:first-child { padding-top: 0; }
 }
-/* on a wide screen a board with one game should not stretch its price boxes across the page */
-.games { grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 40rem)); background: #101010; }
-.game + .game { box-shadow: -1px 0 0 #2A2A2A, 0 -1px 0 #2A2A2A; }
+.cc-card .plot-body { padding-bottom: 1rem; }
+.cc-today { display: flex; flex-flow: row wrap; gap: 1rem 1.75rem; align-items: center; }
+.cc-mandala { flex: none; width: min(100%, 15rem); height: auto; aspect-ratio: 1; }
+.cc-today > div { flex: 1 1 14rem; }
+.cc-note { margin: 0; font-weight: 500; }
+.cc-you { margin: .6rem 0 0; }
+.cc-key { margin: .5rem 0 .8rem; color: var(--husk); font-size: .92rem; }
+.cc-key span { white-space: nowrap; margin-right: .35em; }
+.cc-key span::before { content: ""; display: inline-block; width: .7em; height: .7em; margin-right: .3em; border: 1px solid #000; border-radius: 50%; background: var(--k); }
+.cc-balls { display: flex; flex-wrap: wrap; gap: .5rem; padding-top: .8rem; }
+.cc-card .cc-note + .cc-balls { padding-top: .8rem; }
+.cc-card .plot-body > .cc-balls:first-child { padding-top: 0; }
+
+/* ---------- merch ---------- */
+
+.page-intro { max-width: 50ch; margin-bottom: 0; font: 700 clamp(1.2rem, 2vw, 1.45rem)/1.25 var(--label); text-wrap: balance; }
+.products { list-style: none; margin-bottom: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: var(--gap); }
+.product { display: flex; flex-direction: column; padding-bottom: 1rem; border-radius: var(--radius); overflow: hidden; background: var(--paper); box-shadow: var(--lift); }
+.product-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* a pale table for the product to lie on, lit from the middle */
+  background: radial-gradient(circle at 50% 42%, #FDFCF9 0%, #F3F1E8 55%, #E6E3D6 100%);
+}
+.art-type { font-family: var(--display); font-weight: 700; }
+.product-name { margin: .9rem 1rem 0; font: 700 1.3rem/1.1 var(--label); }
+.product-blurb { margin: .3rem 1rem .8rem; color: var(--husk); }
+.product-soon, .product-buy {
+  align-self: flex-start;
+  margin: auto 1rem 0;
+  padding: .35em .65em .28em;
+  border: 2px solid #000;
+  border-radius: 5px;
+  font: 700 .95rem/1 var(--label);
+}
+.product-buy { background: var(--gold); color: #000; text-decoration: none; }
+.product-buy:hover { background: #000; color: var(--gold); }
+.merch-note { max-width: 68ch; color: var(--husk); font-size: .9rem; }
+
+/* ---------- the foot of the page: black again, with every way onward ---------- */
+
+.foot { margin-top: clamp(2rem, 4vw, 3rem); border-top: 3px solid var(--gold); background: #000; color: var(--ash); font-size: .88rem; }
+.foot-inner { display: grid; gap: 1rem 2rem; max-width: 90rem; margin: 0 auto; padding: 1.75rem var(--gutter) 2.5rem; }
+@media (min-width: 52rem) { .foot-inner { grid-template-columns: auto minmax(0, 1fr); } .foot-notes { grid-column: 2; } }
+.foot-mark { display: flex; align-self: start; }
+.foot-mark .ear { width: 3.25rem; height: 3.25rem; }
+.foot-nav { display: flex; flex-wrap: wrap; gap: .35rem 1.4rem; align-content: start; }
+.foot-nav a { padding: .25rem 0; color: #fff; font: 700 .95rem/1.3 var(--label); text-decoration: none; text-transform: uppercase; letter-spacing: .03em; }
+.foot-nav a:hover { color: var(--gold); }
+.foot-notes p { max-width: 80ch; margin: 0 0 .6rem; }
+
+/* ---------- moving from page to page, and people who would rather nothing moved ---------- */
+
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .18s; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .wordmark .ear, .updated::before { animation: none; }
+  .search, .totop { transition: none; }
+  @view-transition { navigation: none; }
+}
+
+@media print {
+  .jump, .scores, .since, .promo, .totop, .refresh, .search, .chips, .more-btn, .cc, .turf { display: none !important; }
+  * { background: none !important; color: #000 !important; box-shadow: none !important; }
+}

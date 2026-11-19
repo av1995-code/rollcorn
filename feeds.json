@@ -2,35 +2,24 @@
   "site": {
     "name": "Roll Corn",
     "url": "https://rollcorn.com",
-    "tagline": "Iowa sports headlines, gathered from around the web."
+    "tagline": "Independent Iowa sports headlines, gathered from around the web."
   },
   "days_to_keep": 14,
-  "latest_count": 10,
-  "per_sport_count": 10,
   "sports": [
-    {"id": "womens-basketball", "name": "Women's basketball",
-     "keywords": ["women's basketball", "womens basketball", "women's hoops", "wbb", "jan jensen"]},
-    {"id": "football", "name": "Football",
-     "keywords": ["football", "kinnick", "ferentz", "quarterback", "touchdown", "bowl game", "nfl draft", "offensive line", "running back", "linebacker"]},
-    {"id": "mens-basketball", "name": "Men's basketball",
-     "keywords": ["men's basketball", "mens basketball", "basketball", "mbb", "carver-hawkeye", "mccollum"]},
-    {"id": "wrestling", "name": "Wrestling",
-     "keywords": ["wrestl", "brands", "dual meet"]},
-    {"id": "volleyball", "name": "Volleyball",
-     "keywords": ["volleyball"]},
-    {"id": "baseball", "name": "Baseball",
-     "keywords": ["baseball", "heller"]},
-    {"id": "softball", "name": "Softball",
-     "keywords": ["softball"]}
+    {"id": "womens-basketball", "name": "Women's basketball", "keywords": ["women's basketball", "womens basketball", "women's hoops", "wbb", "women + basketball"], "hints": ["jan jensen"]},
+    {"id": "football", "name": "Football", "keywords": ["football"], "hints": ["kinnick", "ferentz", "quarterback", "touchdown", "bowl game", "nfl draft", "offensive line", "running back", "linebacker"]},
+    {"id": "mens-basketball", "name": "Men's basketball", "keywords": ["men's basketball", "mens basketball", "mbb"], "hints": ["mccollum"], "plain": ["basketball"], "loose": ["carver-hawkeye"], "not_if": ["women", "wbb"]},
+    {"id": "wrestling", "name": "Wrestling", "keywords": ["wrestl"], "hints": ["brands", "dual meet"]},
+    {"id": "volleyball", "name": "Volleyball", "keywords": ["volleyball"]},
+    {"id": "baseball", "name": "Baseball", "keywords": ["baseball"], "hints": ["heller"]},
+    {"id": "softball", "name": "Softball", "keywords": ["softball"]}
   ],
-  "other_sport": {"id": "more", "name": "More sports"},
+  "other_sport": {"id": "more", "name": "More sports", "nav": "More"},
   "feeds": [
-    {"name": "Iowa Athletics", "url": "https://hawkeyesports.com/feed/"},
-    {"name": "The Daily Iowan", "url": "https://dailyiowan.com/category/sports/feed/"},
-    {"name": "Black Heart Gold Pants", "url": "https://www.blackheartgoldpants.com/rss/index.xml"},
-    {"name": "Go Iowa Awesome", "url": "https://www.goiowaawesome.com/rss/"},
-    {"name": "On3", "url": "https://www.on3.com/teams/iowa-hawkeyes/feed/", "must_mention": ["iowa", "hawkeye"]},
-
+    {"name": "Iowa Athletics", "url": "https://hawkeyesports.com/feed/", "all_iowa": true},
+    {"name": "The Daily Iowan", "url": "https://dailyiowan.com/category/sports/feed/", "all_iowa": true},
+    {"name": "Black Heart Gold Pants", "url": "https://www.blackheartgoldpants.com/rss/index.xml", "all_iowa": true},
+    {"name": "On3", "url": "https://www.on3.com/teams/iowa-hawkeyes/feed/", "iowa_link": "/teams/iowa-hawkeyes/"},
     {"google_news": "\"Iowa Hawkeyes\" football", "sport": "football"},
     {"google_news": "\"Iowa Hawkeyes\" men's basketball", "sport": "mens-basketball"},
     {"google_news": "\"Iowa Hawkeyes\" women's basketball", "sport": "womens-basketball"},
@@ -40,5 +29,6 @@
     {"google_news": "\"Iowa Hawkeyes\" softball", "sport": "softball"}
   ],
   "skip_sources": [],
-  "other_schools": ["iowa state", "cyclones", "cyclone", "northern iowa", "uni panthers"]
+  "iowa_words": ["iowa", "hawkeye", "hawks", "kinnick", "carver", "ferentz", "cy-hawk"],
+  "other_schools": ["Iowa State", "Cyclones", "Cyclone", "Northern Iowa", "UNI Panthers", "Iowa High School", "Iowa high school", "Iowa Western", "Iowa Central", "Iowa Wesleyan", "Iowa Cubs", "Iowa Wild", "Iowa Wolves"]
 }
