@@ -47,6 +47,12 @@
 
   // Everything is drawn on a field 480 units tall; the width follows the screen.
   var VH = 480, GY = 408, TURF_H = 62, R = 10, YARD = 12;
+  // GY is only the top edge of the grass in the picture. Everyone stands half way down it, at FEET, and
+  // that is the ground for the ball as well: FLOOR is the ball's centre when it lies there. Whatever
+  // stands on the field measures its height up from BASE, so a thing is as tall as it is drawn.
+  var FEET = GY + TURF_H * 0.5, FLOOR = FEET - R, BASE = FLOOR + 6;
+  var MAN = 60;                                        // how tall a standing player is drawn, feet to helmet
+  var BED = FEET - 18;                                 // the bed of the mascot's trampoline
   var GRAV = 1350, TAP = -430, PUNT = -640;
   var SPIN = 1.5;                                      // seconds each spin of the slots takes
   var W = 960, H = 480, U = 1, VW = 960, BX = 270;
@@ -128,13 +134,13 @@
   var freeHelmet = false;                              // won on the slots: the next punt starts with a helmet
 
   var S = null;                                        // the current punt
-  var now = 0, shake = 0, tod = 0, flash = 0, zoom = 0;
+  var now = 0, shake = 0, tod = 0, flash = 0, zoom = 0, cheerAt = -9, sparkAt = -9;
   var particles = [], floaters = [], clouds = [], stars = [];
   for (var c = 0; c < 2; c++) clouds.push({ x: Math.random() * 1400, y: 30 + Math.random() * 150, s: 0.6 + Math.random() * 0.7 });
   for (var st = 0; st < 30; st++) stars.push({ x: Math.random(), y: Math.random() * 0.7, r: 0.6 + Math.random() * 1.2, p: Math.random() * 6 });
 
   function reset() {
-    S = { phase: "intro", t: 0, y: GY - 30, vy: 0, dist: 0, speed: 0, spin: 0,
+    S = { phase: "intro", t: 0, y: FLOOR - 24, vy: 0, dist: 0, speed: 0, spin: 0,
           obs: [], kernels: [], helmets: [], crows: [], refs: [], trail: [], nextX: 0, lastC: 300, count: 0, highT: 0, puntAt: 16,
           got: 0, gates: 0, wait: 0, freeze: 0, crowAt: 20, shield: false, safe: 0,
           pts: 0, mult: 1, superT: 0, smashed: 0, bestPtsWas: bestPts, kick: "", closes: 0, bigs: 0,
@@ -190,7 +196,7 @@
     moo: function () { tone(150, 0.55, "sawtooth", 0.035, 98); },
     power: function () { [660, 880, 1320].forEach(function (f, i) { tone(f, 0.14, "square", 0.07, 0, i * 0.06); }); },
     saved: function () { tone(220, 0.25, "square", 0.1, 660); thud(0.4); buzz(60); },
-    gate: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.2, "triangle", 0.16, 0, i * 0.07); }); buzz(40); },
+    gate: function () { cheerAt = now; [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.2, "triangle", 0.16, 0, i * 0.07); }); buzz(40); },
     mark: function () { tone(523, 0.12, "triangle", 0.14); tone(784, 0.18, "triangle", 0.14, 0, 0.1); },
     hit: function () { tone(220, 0.3, "sine", 0.12, 110); thud(0.3); buzz(40); },
     over: function () { [392, 330, 262].forEach(function (f, i) { tone(f, 0.26, "triangle", 0.12, 0, i * 0.15); }); }
@@ -209,6 +215,8 @@
       slotSfx.coins(22, 0.7); tone(1047, 0.9, "sine", 0.08, 0, 0.7); buzz(120);
     },
     miss: function () { tone(330, 0.16, "sine", 0.06, 262); },
+    token: function () { tone(1319, 0.07, "triangle", 0.1); tone(1976, 0.18, "triangle", 0.1, 0, 0.07); buzz(15); },
+    land: function (n) { tone(1400 + (n % 6) * 90, 0.035, "triangle", 0.045); },
     keep: function () { tone(1568, 0.06, "square", 0.045); tone(2093, 0.3, "triangle", 0.09, 0, 0.07); slotSfx.coins(3, 0.12); },
     doubled: function (n) { var k = Math.pow(2, n / 6); [523, 659, 784, 1047].forEach(function (f, i) { tone(f * k, 0.16, "triangle", 0.13, 0, i * 0.06); }); slotSfx.coins(4 + n * 2, 0.28); },
     gone: function () { tone(294, 0.22, "sine", 0.08, 196); tone(196, 0.35, "sine", 0.06, 147, 0.2); }
@@ -278,7 +286,9 @@
     var pay = q <= 4 ? QUARTER.bonus[q - 1] : QUARTER.overtime;
     addPts(pay);
     S.nextX = Math.max(S.nextX, S.dist + VW + 300);        // a breather before the next one starts
-    floaters.push({ text: (q === 1 ? "END OF 1ST QUARTER" : q === 2 ? "HALFTIME" : q === 3 ? "END OF 3RD QUARTER" : q === 4 ? "FINAL WHISTLE: OVERTIME" : "OVERTIME") + "  +" + pay * S.mult, life: -0.5, color: GOLD });
+    var gold = q === 2 || q === 4;                         // halftime and the final whistle each pay a golden spin
+    if (gold) goldSpin();
+    floaters.push({ text: (q === 1 ? "END OF 1ST QUARTER" : q === 2 ? "HALFTIME" : q === 3 ? "END OF 3RD QUARTER" : q === 4 ? "FINAL WHISTLE" : "OVERTIME") + "  +" + pay * S.mult + (gold ? "  \u00B7  GOLDEN SPIN" : ""), life: -0.5, color: GOLD });
     sfx.gate(); burst(BX, S.y, 24); shake = Math.max(shake, 5);
   }
   // Spins are earned inside one punt, and each costs more than the last, so the third is a real punt's work.
@@ -301,15 +311,28 @@
     if (rel < 0.2 && (!best || rel < best.rel)) best = { rel: rel, text: "Only " + Math.ceil(d) + " points from level " + (levelOf(xp) + 1) };
     return best ? best.text : "";
   }
-  var LIVES = 3, lives = LIVES, carry = 0, extraLife = false, gamePunts = [];
-  // One power-up at a time. A slot win or a catch on the field puts it in the pocket; the space bar
-  // (or a tap on its badge) uses it, whenever the player chooses, while the ball is up.
+  var LIVES = 3, lives = LIVES, carry = 0, extraLives = 0, gameLives = LIVES, gamePunts = [];
+  var gameFeed = 0, gameSpins = 0, gameGolds = 0;      // what this game has put into the machine: corn in the jackpot, spins, golden spins
+  // One power-up in the hand at a time. A slot win or a catch on the field puts it in the pocket; the space bar
+  // (or a tap on its badge) uses it, whenever the player chooses, while the ball is up. A good run on the
+  // machine is never wasted: up to two more wait on the sideline, and the next steps up once the hand is free.
   var diving = false;                                  // down arrow, or a drag downward: the ball drops fast
-  var pocket = "";
+  var KIT = 3;
+  var kit0 = loadText("rollcorn-hang-kit").replace(/[^HSBPUT]/g, "").slice(0, KIT);
+  var pocket = kit0.charAt(0), rack = kit0.slice(1).split("");
+  function kitSave() { save("rollcorn-hang-kit", pocket + rack.join("")); }
+  function gain(code) {                                // where it went: 1 the hand, 2 or 3 the sideline, 0 no room
+    var at = 0;
+    if (!pocket) { pocket = code; at = 1; }
+    else if (rack.length < KIT - 1) { rack.push(code); at = rack.length + 1; }
+    if (at) kitSave();
+    return at;
+  }
+  function stepUp() { if (!pocket && rack.length) { pocket = rack.shift(); kitSave(); return true; } return false; }
   var POWERS = { H: "HELMET", S: "SUPER PUNT", B: "BLOCKERS", P: "CORN MAGNET", U: "BIG UPRIGHTS", T: "TAILWIND" };
   function usePower() {
     if (S.phase !== "play" || !pocket || paused) return;
-    var code = pocket; pocket = "";
+    var code = pocket; pocket = ""; S.stepT = 0; kitSave();
     if (code === "H") S.shield = true;
     else if (code === "B") { S.blockT = BLOCK.secs; S.knocked = S.knocked || 0; }
     else if (code === "P") S.magnet = true;
@@ -327,9 +350,16 @@
   }
   var blockNext = false;                               // won on the slots: three blockers run with the next punt
   function start() {
-    slotWrapUp();
+    slotWrapUp(); flights.length = 0;
     reset();
-    if (lives <= 0) { lives = LIVES + (extraLife ? 1 : 0); extraLife = false; carry = 0; }   // a new game
+    if (lives <= 0 && extraLives > 0 && carry > 0) {       // a life won on the machine: the same game goes on
+      lives = extraLives; gameLives += extraLives; extraLives = 0; S.cont = true;
+      gameFeed = 0; gameSpins = 0; gameGolds = 0;
+    } else if (lives <= 0) {                               // a new game
+      lives = LIVES + extraLives; gameLives = lives; extraLives = 0; carry = 0;
+      gameFeed = 0; gameSpins = 0; gameGolds = 0;
+    }
+    stepUp();
     S.base = carry; S.pts = carry;
     punts += 1;
     S.rookie = rookieAt(played);
@@ -345,7 +375,7 @@
     var g = gaugeNow();
     if (Math.abs(g - SWEET) <= 0.07 + 0.08 * S.rookie) {
       S.kick = "perfect"; S.vy = PUNT * 1.14; S.safe = 1.6; S.pts += POINTS.perfect * (doubleNext ? 2 : 1); S.br.bonus = POINTS.perfect * (doubleNext ? 2 : 1);
-      burst(BX, GY - 20, 26); shake = 7;
+      burst(BX, FEET - 34, 26); shake = 7; cheerAt = now;
       floaters.push({ text: "PERFECT PUNT  +" + POINTS.perfect, life: 0, color: GOLD });
       tone(660, 0.12, "triangle", 0.12); tone(990, 0.2, "triangle", 0.12, 0, 0.09);
     } else if (g >= 0.5) {
@@ -362,7 +392,7 @@
     S.nextX = BX + 520 + 160 * S.rookie;
     shareBtn.hidden = true;
     sfx.kick();
-    dust(BX - 4, GY - 4, 10);
+    dust(BX - 4, FEET - 2, 8); divot(BX - 2, FEET, 6);
     label("Tap!");
     say("The punt is up. Keep tapping to keep it in the air.");
     board();
@@ -413,33 +443,34 @@
     var roll = Math.random();
     var kind = n % 6 === 0 ? "gate" : q >= 2 && roll < (q === 2 ? 0.3 : 0.18) ? "mascot" : q >= 1 && n > 2 && roll < 0.55 ? "jump" : n > 2 && roll < 0.75 ? "bench" : "wall";
     // `reach` is how high this one stands; each is within a tap or two of the last
-    var reach = clamp(S.lastC + (Math.random() * 2 - 1) * 150, 120, GY - 80), o, ky;
-    if (n <= 2) reach = Math.max(reach, GY - 150);               // the first two are easy
-    reach += (Math.max(reach, GY - 170) - reach) * rk;           // and a new player meets shorter ones
+    var reach = clamp(S.lastC + (Math.random() * 2 - 1) * 150, 120, BASE - 80), o, ky;
+    if (n <= 2) reach = Math.max(reach, BASE - 150);             // the first two are easy
+    reach += (Math.max(reach, BASE - 170) - reach) * rk;         // and a new player meets shorter ones
     if (kind === "gate") {
-      reach = clamp(reach, 180, GY - 110);
+      reach = clamp(reach, 180, BASE - 110);
       o = { kind: kind, x: x, w: 34, bot: reach, tip: reach - (S.wide ? 210 : 105) };   // crossbar at `bot`, uprights up to `tip`
       ky = reach - 52;
     } else if (kind === "jump") {
-      o = { kind: kind, x: x, w: 48, bot: GY, apex: 70 + Math.random() * 150, jy: 0, jv: 0, st: 0 };   // a returner who leaps as the ball arrives
-      reach = GY - 74 - o.apex; ky = reach - 34;
+      o = { kind: kind, x: x, w: 48, bot: BASE, apex: 88 + Math.random() * 150, jy: 0, jv: 0, st: 0 };   // a returner who leaps as the ball arrives; apex is how far his feet leave the grass
+      reach = FEET - MAN - o.apex; ky = reach - 34;
     } else if (kind === "mascot") {
-      o = { kind: kind, x: x, w: 44, bot: GY, hi: 130 + Math.random() * 100, sp: 3 + Math.random() * 0.8, ph: Math.random() * 6, jy: 0 };   // on a trampoline
-      reach = GY - 62 - o.hi; ky = GY - 62 - o.hi * 0.5;
+      o = { kind: kind, x: x, w: 44, bot: BASE, hi: 130 + Math.random() * 100, sp: 3 + Math.random() * 0.8, ph: Math.random() * 6, jy: 0 };   // on a trampoline
+      reach = BASE - 62 - o.hi; ky = BASE - 62 - o.hi * 0.5;
     } else if (kind === "bench") {
-      reach = GY - 62;
+      reach = BASE - 62;
       o = { kind: kind, x: x, w: 120, bot: reach };
       ky = reach - 34;
       S.kernels.push({ x: x + 30, y: ky, got: false, ph: Math.random() * 6 });
     } else {
+      reach = Math.min(reach, FEET - 104);                         // never fewer than two men: one alone would have to be stretched to fill it
       o = { kind: kind, x: x, w: 48, bot: reach };
       ky = reach - 36;
     }
     // a kernel sits just over the top of each one; some are big, and closer still
     if (kind !== "gate" && Math.random() < 0.3 + 0.3 * rk) S.kernels.push({ x: x + o.w / 2, y: ky + 14, got: false, big: true, ph: Math.random() * 6 });
     else S.kernels.push({ x: x + (kind === "bench" ? 90 : o.w / 2), y: ky, got: false, ph: Math.random() * 6 });
-    if (S.mercy && n === 2) S.kernels.push({ x: x - step * 0.45, y: clamp(S.lastC - 80, 90, GY - 120), got: false, ph: 0, spin: true });   // and a golden ear early on
-    if (n > 3 && Math.random() < 0.07) S.kernels.push({ x: x - step * 0.45, y: clamp(S.lastC - 90 + (Math.random() - 0.5) * 120, 70, GY - 110), got: false, ph: Math.random() * 6, spin: true });
+    if (S.mercy && n === 2) S.kernels.push({ x: x - step * 0.45, y: clamp(S.lastC - 80, 90, BASE - 120), got: false, ph: 0, spin: true });   // and a golden ear early on
+    if (n > 3 && Math.random() < 0.045) S.kernels.push({ x: x - step * 0.45, y: clamp(S.lastC - 90 + (Math.random() - 0.5) * 120, 70, BASE - 110), got: false, ph: Math.random() * 6, spin: true });
     if (n % 9 === 5 || (n > 6 && n % 9 === 1)) {                 // something to catch: a helmet, or now and then another boost
       var pk = n % 9 === 5 && Math.random() < 0.55 ? "H" : "PTB".charAt(Math.floor(Math.random() * 3));
       S.helmets.push({ x: x - step / 2, y: (S.lastC + reach) / 2 - 70, ph: Math.random() * 6, kind: pk });
@@ -483,11 +514,33 @@
     return (cx - nx) * (cx - nx) + (cy - ny) * (cy - ny) < r * r;
   }
 
+  // What can be hit, as rectangles on the field: the same shapes each thing is drawn to, so nothing
+  // stops the ball where nothing is drawn. The collision and the test overlay both read this.
+  function boxes(o) {
+    var mid = o.x + o.w / 2, y, tall, n, each;
+    if (o.kind === "jump") { y = FEET - o.jy; return [[mid - 11, y - 40, 22, 40], [mid - 14, y - MAN, 28, 24]]; }          // body, helmet
+    if (o.kind === "mascot") { y = BED - o.jy; return [[mid - 14, y - 62, 28, 62], [mid - 34, BED - 3, 68, FEET - BED + 3]]; }   // the ear, and the trampoline under it
+    if (o.kind === "gate") return [[o.x, o.bot - 3, o.w, 6], [mid - 4, o.bot, 8, BASE - o.bot + 40]];                  // crossbar, post
+    if (o.kind === "bench") return [[o.x, o.bot, 92, BASE - o.bot + 40], [o.x + 94, o.bot + 22, o.w - 94, BASE - o.bot + 18]];   // the players, and the lower cooler
+    tall = FEET - o.bot; n = Math.max(1, Math.round(tall / 60)); each = tall / n;                                      // a wall: the top man is narrower than the men under him
+    if (n < 2) return [[mid - 16, o.bot, 32, BASE - o.bot + 40]];
+    return [[mid - 16, o.bot, 32, each], [o.x, o.bot + each - 6, o.w, BASE - o.bot - each + 46]];
+  }
+  function touches(o, bx, by) {
+    var b = boxes(o);
+    for (var i = 0; i < b.length; i++) if (hitRect(bx, by, R - 2, b[i][0], b[i][1], b[i][2], b[i][3])) return true;
+    return false;
+  }
+  var debugBoxes = false;                              // the test hook can outline them
+
   function die(cause) {
     S.phase = "dead";
     S.cause = cause;
     S.wait = 0;
     S.freeze = 0.13;
+    S.diedAt = now;
+    if (cause === "Downed") { thud(0.3); dust(BX, FEET, 10); divot(BX, FEET, 14); }     // it comes down on the grass
+    else { S.bamAt = now; S.bamY = S.y; }
     if (S.vy < 0) S.vy = 0;
     shake = 6; flash = 0.25;
     sfx.hit();
@@ -497,10 +550,14 @@
 
   // ---------- Kernel slots, built around a set return to player (RTP)
   //
-  // A punt of five seconds earns a spin, and each time the ball goes through the uprights adds one
-  // (three at most). Spins are earned, never bought, so there is no real stake. To give RTP a meaning,
-  // every spin is treated as being worth STAKE kernels, and the machine is set so that over the long
-  // run it pays back RTP of that.
+  // Spins are earned on the field (150, 400 and 800 points in a punt), never bought, so there is no real
+  // stake. To give RTP a meaning, every spin is treated as being worth STAKE kernels, and the machine is
+  // set so that over the long run it pays back RTP of that.
+  //
+  // Three things tie the machine to the field, and all three sit outside those sums, as extras the player
+  // earns by playing: a golden spin (a spin that cannot miss) for a golden ear, halftime, the final whistle
+  // or a new best; every ear caught on the field added to the jackpot as well as to the player's pile; and
+  // power-ups won here carried onto the field, three at most, one in the hand at a time.
   //
   // Where the return comes from:
   //   1. the jackpot: its seed, times the chance of hitting it, plus the share of every spin's
@@ -539,6 +596,7 @@
   function boostValue(o) { for (var k in BOOSTS) if (o[k]) return BOOSTS[k]; return 0; }
   function takeWin(sp, win) { sp.pay = win.pay; sp.text = win.text; for (var k in BOOSTS) sp[k] = !!win[k]; }
   var RESPIN = 0.18;      // the chance a respun reel completes the three: an even trade for the pair
+  var forced = "";        // testing only
   function slotMath(rtp) {
     var weights = 0, value = 0;
     WINS.forEach(function (w) { weights += w.weight; value += w.weight * (boostValue(w) || w.pay); });
@@ -569,6 +627,17 @@
     m = m || (nth < WELCOME.until ? slotMath(rtpAt(nth)) : MATH);
     var all = REEL, sp = { pay: 0 };
     pot += SLOTS.stake * SLOTS.jackpotFeed;
+    if (forced) {                                                               // testing only: set through the hook at the foot of the file
+      var fs = forced, fw; forced = "";
+      for (fw = 0; fw < WINS.length; fw++) if (WINS[fw].syms === fs) { sp.syms = fs; takeWin(sp, WINS[fw]); return sp; }
+      if (fs === "CCC") { sp.syms = fs; sp.pay = Math.floor(pot); sp.big = true; sp.text = "JACKPOT  +" + sp.pay.toLocaleString("en-US"); pot = pot - sp.pay + SLOTS.jackpotSeed; return sp; }
+      sp.syms = fs;
+      if (fs.charAt(0) === fs.charAt(1) || fs.charAt(1) === fs.charAt(2) || fs.charAt(0) === fs.charAt(2)) {
+        takeWin(sp, WINS[WINS.length - 1]); sp.pair = true;
+        sp.odd = fs.charAt(0) === fs.charAt(1) ? 2 : fs.charAt(0) === fs.charAt(2) ? 1 : 0; sp.pairSym = fs.charAt(sp.odd === 0 ? 1 : 0);
+      } else sp.text = "NO MATCH";
+      return sp;
+    }
     if (nth < WELCOME.script.length) {                                          // one of the three set spins
       for (var w = 0; w < WINS.length; w++) if (WINS[w].syms === WELCOME.script[nth]) { sp.syms = WINS[w].syms; takeWin(sp, WINS[w]); }
       return sp;
@@ -641,6 +710,14 @@
   // land on. A win can be kept or put on a fair coin flip, double or nothing, up to four times.
   // The flip is even money, so it leaves the return to player where it was.
   var spins = load("rollcorn-hang-spins");
+  // A golden spin cannot miss. They are won on the field, not bought and not handed out by the clock:
+  // a golden ear caught, halftime reached, the final whistle, a new best score.
+  var golds = Math.min(load("rollcorn-hang-golds"), spins);
+  function goldSpin() {
+    spins += 1; golds += 1;
+    if (S && S.phase === "play") S.golds = (S.golds || 0) + 1;
+    save("rollcorn-hang-spins", spins); save("rollcorn-hang-golds", golds);
+  }
   var ui = { state: "idle", sp: null, t: 0, stopAt: [0, 0, 0], stopped: 3, pend: 0, doubles: 0, msg: "" };
   var PANEL = { w: 280, h: 206, y: 270 };
   // The stake: one, two or three spins on a pull. Every prize is multiplied to match, so the return is the same.
@@ -667,14 +744,17 @@
         r = HARVEST[i];
         if (r.spins) spins += r.spins;
         if (r.corn) { bank += r.corn; earned += r.corn; ui.tally = (ui.tally || 0) + r.corn; }
-        if (r.gold) { spins += 1; ui.goldNext = true; }
-        if (r.boost) { if (!pocket) pocket = "BSPTUH".charAt(Math.floor(Math.random() * 6)); else spins += 2; }
-        ui.reward = "REWARD:  " + (r.boost && ui.reward !== undefined && pocket ? POWERS[pocket] : r.text); ui.rewardNow = now;
+        if (r.gold) { spins += 1; golds += 1; }
+        var gift = r.boost ? "BSPTUH".charAt(Math.floor(Math.random() * 6)) : "", giftAt = gift ? gain(gift) : 0;
+        if (gift && !giftAt) { gift = ""; spins += 2; }                    // no room on the sideline: two spins instead
+        ui.reward = "REWARD:  " + (gift ? POWERS[gift] : r.boost ? "2 SPINS" : r.text); ui.rewardNow = now;
+        if (gift) fly(gift, VW / 2, PANEL.y + 193, "kit" + giftAt);
+        if (r.corn) { flyCorn(8, VW / 2, PANEL.y + 193, "corn"); bankAt = now + FLY; }
         slotSfx.boost(); popcorn(14, 0.7);
         if (i === HARVEST.length - 1) { hvLevel += 1; hvPts = 0; }
       }
     }
-    save("rollcorn-hang-harvest", hvLevel + "|" + hvPts.toFixed(0)); save("rollcorn-hang-spins", spins);
+    save("rollcorn-hang-harvest", hvLevel + "|" + hvPts.toFixed(0)); save("rollcorn-hang-spins", spins); save("rollcorn-hang-golds", golds);
     save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned);
   }
   // Spins come back on their own: one every ten minutes, while there are fewer than five.
@@ -747,16 +827,18 @@
     var show = !away && slotTime();
     var turning = ui.state === "spinning" || ui.state === "respin" || ui.state === "flip", choosing = ui.state === "double" || ui.state === "pair";
     spinBtn.hidden = !(show && (turning || ui.state === "kick" || (ui.state === "idle" && spins > 0)));
-    spinBtn.textContent = ui.state === "kick" ? "Kick!" : turning ? "Stop the reel" : "Spin" + (Math.min(ui.bet, spins) > 1 ? " x" + Math.min(ui.bet, spins) : "") + " (" + spins + " left)";
+    spinBtn.textContent = ui.state === "kick" ? "Kick!" : turning ? "Stop the reel" : (golds > 0 ? "Golden spin" : "Spin" + (Math.min(ui.bet, spins) > 1 ? " x" + Math.min(ui.bet, spins) : "")) + " (" + spins + " left)";
     keepBtn.hidden = doubleBtn.hidden = !(show && choosing);
     keepBtn.textContent = "Keep " + ui.pend + " corn";
     doubleBtn.textContent = ui.state === "pair" ? "Try for three of a kind" : "Double or nothing";
   }
   function pull() {
     if (spins <= 0) return;
-    ui.betNow = Math.max(1, Math.min(ui.bet, spins));
+    golds = Math.min(golds, spins);
+    ui.gold = golds > 0;                                   // golden spins go first, and one at a time
+    ui.betNow = ui.gold ? 1 : Math.max(1, Math.min(ui.bet, spins));
     spins -= ui.betNow;
-    ui.gold = !!ui.goldNext; ui.goldNext = false;
+    if (ui.gold) { golds -= 1; save("rollcorn-hang-golds", golds); }
     var care = careMath();
     ui.sp = ui.gold ? spinOnce({ hit: 1, weights: MATH.weights }) : care ? spinOnce(care) : spinOnce();
     if (hotLeft > 0) hotLeft -= 1;
@@ -778,7 +860,13 @@
   }
   function settle() {
     var sp = ui.sp;
-    ui.msg = sp.text;
+    var won = sp.helmet ? "H" : sp.superPunt ? "S" : sp.blockers ? "B" : sp.magnet ? "P" : sp.wide ? "U" : sp.wind ? "T" : "", wonAt = won ? gain(won) : 0;
+    if (won && !wonAt) {                                   // no room on the sideline: it is paid in corn instead
+      sp.pay += boostValue(sp); for (var bk in BOOSTS) sp[bk] = false;
+      sp.text = "SIDELINE FULL  +" + sp.pay + " CORN"; won = "";
+    }
+    if (sp.life && lives <= 0) sp.text = "EXTRA LIFE: YOUR GAME GOES ON";
+    ui.msg = sp.text; ui.quietAt = now;
     harvestAdd((sp.big ? 150 : sp.pay + boostValue(sp)) * (sp.pay > 0 || sp.big ? 1 : ui.betNow || 1));
     dry = sp.big || sp.pay > 0 || boostValue(sp) ? 0 : dry + 1;
     ui.streak = dry ? 0 : (ui.streak || 0) + 1;
@@ -790,8 +878,8 @@
     }
     if (sp.big) popcorn(80, 2.4);
     else if (sp.syms.charAt(0) === sp.syms.charAt(1) && sp.syms.charAt(1) === sp.syms.charAt(2)) popcorn(24, 1.0);
-    var won = sp.helmet ? "H" : sp.superPunt ? "S" : sp.blockers ? "B" : sp.magnet ? "P" : sp.wide ? "U" : sp.wind ? "T" : "";
-    if (won) pocket = won;                                 // the newest win takes the pocket
+    if (won) flyWin(won, "kit" + wonAt);                   // the prize is seen going to the sideline
+    if (sp.big || sp.pay > 0 || boostValue(sp)) { cheerAt = now; if (sp.big || !sp.pair) sparkAt = now; }     // and the crowd saw it too
     if (sp.bonus) {                                        // three tees: the prize is whatever the player kicks
       ui.state = "kick"; ui.kickAt = now; ui.winNow = now;
       slotSfx.boost(); burst(VW / 2, PANEL.y + 70, 24);
@@ -799,12 +887,16 @@
       board();
       return;
     }
-    if (sp.life) { if (lives > 0 && lives < 5) lives += 1; else if (lives <= 0) extraLife = true; }
-    if (sp.syms === "FFF") doubleNext = true;
+    if (sp.life) {
+      if (lives > 0) { if (lives < 5) { lives += 1; gameLives += 1; flyWin("L", "lives"); } }
+      else { if (extraLives < 2) flyWin("L", "lives"); extraLives = Math.min(2, extraLives + 1); label("Keep going"); }      // at game over: the same game goes on
+    }
+    if (sp.syms === "FFF") { doubleNext = true; flyWin("F", "next"); }
     ui.winNow = sp.pay || boostValue(sp) ? now : -9;
     if (sp.big) {
       bank += sp.pay; earned += sp.pay;
       ui.tally = (ui.tally || 0) + sp.pay;
+      flyCorn(16, VW / 2, PANEL.y + 99, "corn"); bankAt = now + FLY;
       slotSfx.jackpot(); burst(VW / 2, PANEL.y + 70, 90); shake = 14; flash = 1; fireworks();
       ui.state = "idle";
     } else if (sp.pay > 0) {
@@ -846,7 +938,7 @@
       betScale(sp);
       settle();
     } else {
-      sp.text = "NO MATCH"; ui.msg = sp.text; ui.winNow = -9;
+      sp.text = "NO MATCH"; ui.msg = sp.text; ui.winNow = -9; ui.quietAt = now;
       ui.state = "idle";
       slotSfx.gone();
       say("No match this time.");
@@ -869,6 +961,8 @@
     var was = earned, fresh = "";
     bank += ui.pend; earned += ui.pend;
     ui.tally = (ui.tally || 0) + ui.pend;
+    if (ui.pend > 0) { flyCorn(clamp(Math.round(ui.pend / 5), 2, 10), VW / 2 - 68, PANEL.y + 166, "corn"); bankAt = now + FLY; }
+    ui.quietAt = now;
     fillCob(ui.pend);
     BALLS.forEach(function (b) { if (was < b.need && earned >= b.need) fresh = b.name; });
     ui.msg = fresh ? "NEW BALL: " + fresh.toUpperCase() : "KEPT  +" + ui.pend;
@@ -897,14 +991,14 @@
     slotSfx.stop(2);
     if (ui.flipWin) {
       ui.pend *= 2; ui.doubles += 1;
-      ui.msg = "DOUBLED"; ui.winNow = now;
+      ui.msg = "DOUBLED"; ui.winNow = now; cheerAt = now;
       slotSfx.doubled(ui.doubles); burst(VW / 2, PANEL.y + 70, 20);
       say("Doubled to " + ui.pend + " corn.");
       if (ui.doubles >= 4) keep();
     } else {
       k = Math.floor(Math.random() * REEL.length);                    // three different symbols: plainly a miss
       ui.sp.syms = REEL.charAt(k) + REEL.charAt((k + 2) % REEL.length) + REEL.charAt((k + 4) % REEL.length);
-      ui.msg = "GONE";
+      ui.msg = "GONE"; ui.quietAt = now;
       ui.pend = 0; ui.state = "idle";
       slotSfx.gone();
       say("Nothing this time.");
@@ -973,23 +1067,27 @@
     lives -= 1; carry = Math.floor(S.pts);
     if (lives <= 0) ui.tally = 0;                          // a fresh round on the machine
     if (lives <= 0) {                                      // three games in a row, each worse than the last: lean their way
-      games.push(Math.floor(S.pts));
+      if (S.cont && games.length) games[games.length - 1] = Math.floor(S.pts); else games.push(Math.floor(S.pts));
       var g3 = games.slice(-3);
       if (g3.length === 3 && g3[0] > g3[1] && g3[1] > g3[2]) { hotLeft = Math.max(hotLeft, 4); mercyNext = true; }
     }
-    if (lives === LIVES - 1 || !gamePunts.length || S.base === 0) gamePunts = [];
+    if (!gamePunts.length || S.base === 0) gamePunts = [];
     gamePunts.push(Math.floor(S.pts) - S.base);
     S.wait = 0;
     S.rw = 0; S.rewindFrom = S.dist;
     tone(240, 0.55, "sine", 0.045, 520);
     var before = earned;
     bank += S.got; earned += S.got;
+    var feed = Math.max(0, S.got);                         // every ear caught on the field also goes into the jackpot
+    pot += feed; gameFeed += feed;
     S.pts = Math.floor(S.pts);
     var longest = S.t > best;
     if (longest) { best = S.t; save("rollcorn-hang-best", best.toFixed(2)); }
     if (S.pts > bestPts) { bestPts = S.pts; S.newBest = true; save("rollcorn-hang-bestscore", bestPts); }
     var today = dayStats(0), bestToday = S.t > today.best && today.count > 0;
     save(dayKey(0), [(today.sum + S.t).toFixed(2), today.count + 1, Math.max(today.best, S.t).toFixed(2)].join(","));
+    if (S.bestGold) { spins += 1; golds += 1; S.golds = (S.golds || 0) + 1; save("rollcorn-hang-golds", golds); }   // the golden spin for passing the best, banked along with the best
+    var spinsWas = spins;
     S.newSpins = spinsFor(S.pts - S.base);
     var lvWas = levelOf(xp);
     xp += Math.max(0, Math.floor(S.pts) - S.base); save("rollcorn-hang-xp", xp);
@@ -999,6 +1097,20 @@
     spins += S.newSpins;
     save("rollcorn-hang-spins", spins);
     S.goalDone = goalCount();
+    gameSpins += spins - spinsWas + (S.golds || 0); gameGolds += S.golds || 0;
+    if (lives <= 0 && (gameSpins || gameFeed)) {             // the machine opens by saying what this game put into it
+      ui.msg = (gameSpins ? "YOUR GAME EARNED " + gameSpins + (gameSpins === 1 ? " SPIN" : " SPINS") + (gameGolds ? " (" + gameGolds + " GOLDEN)" : "") : "") +
+               (gameSpins && gameFeed ? "  \u00B7  JACKPOT +" + gameFeed : gameFeed ? "YOUR CORN FED THE JACKPOT:  +" + gameFeed : "");
+      ui.daily = true;
+    } else if (lives <= 0 && /^(YOUR |EXTRA LIFE:)/.test(ui.msg)) { ui.msg = "MATCH 3 TO WIN"; ui.daily = false; }     // nothing to report: the last game's line comes down
+    if (lives <= 0) {
+      shownBank = bank - feed; bankAt = now + 0.5;           // the pile on show counts this punt's corn in
+      if (gameFeed > 0 && slotVisible()) {                   // and the game's corn is seen going into the jackpot
+        shownPot = pot - gameFeed; potAt = now + 1.0 + FLY;
+        flyCorn(clamp(Math.round(gameFeed / 5), 3, 12), 26, 25, "pot", 1.0);
+      }
+    }
+    stepUp();
     save("rollcorn-hang-kernels", bank); save("rollcorn-hang-earned", earned); save("rollcorn-hang-pot", pot);
     BALLS.forEach(function (b) { if (before < b.need && earned >= b.need) S.unlocked = b.name; });
     S.kind = S.newBest ? "Your best score ever. Enjoy that one." :
@@ -1063,7 +1175,8 @@
     shareBtn.hidden = false;
     say((lives > 0 ? lives + (lives === 1 ? " life" : " lives") + " left; your score carries on. " : "That was your last life. Game over. ") + S.cause + ". Score " + S.pts.toLocaleString("en-US") + ". " + scoreSum() + " " + S.kind +
         (S.unlocked ? " New ball: " + S.unlocked + "." : "") + (S.goalDone ? " Daily goal done: 2 spins." : "") + (S.levelUp ? " Level " + S.levelUp + ": 2 spins." : "") +
-        (S.newSpins ? " You earned " + S.newSpins + (S.newSpins === 1 ? " spin" : " spins") + " on the corn slots." : "") +
+        (S.newSpins + (S.golds || 0) ? " You earned " + (S.newSpins + (S.golds || 0)) + (S.newSpins + (S.golds || 0) === 1 ? " spin" : " spins") + " on the corn slots" + (S.golds ? ", " + S.golds + " of them golden" : "") + "." : "") +
+        (feed ? " Your " + feed + " corn also went into the jackpot." : "") +
         (spins ? " " + spins + (spins === 1 ? " spin" : " spins") + " waiting: tap the machine." : ""));
     board();
     buildBalls(); buildShow();
@@ -1112,8 +1225,8 @@
     if (!tutor || S.phase !== "play") return "";
     var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
     if (tutorStep === 0) { if (S.taps.length >= 3) tutorStep = 1; return touch ? "TAP TO RISE" : "CLICK TO RISE"; }
-    if (tutorStep === 1) { if (S.floating) S.floated = (S.floated || 0) + 1; if ((S.floated || 0) > 25 || S.t > 9) { tutorStep = 2; if (!pocket) pocket = "B"; } return "HOLD AFTER A " + (touch ? "TAP" : "CLICK") + " TO FLOAT"; }
-    if (tutorStep === 2) { if (!pocket) tutorStep = 3; return touch ? "TAP THE BADGE TO SEND YOUR BLOCKERS" : "PRESS SPACE TO SEND YOUR BLOCKERS"; }
+    if (tutorStep === 1) { if (S.floating) S.floated = (S.floated || 0) + 1; if ((S.floated || 0) > 25 || S.t > 9) { tutorStep = 2; if (!pocket) { pocket = "B"; kitSave(); } } return "HOLD AFTER A " + (touch ? "TAP" : "CLICK") + " TO FLOAT"; }
+    if (tutorStep === 2) { if (!pocket) tutorStep = 3; return (touch ? "TAP THE BADGE TO USE YOUR " : "PRESS SPACE TO USE YOUR ") + (POWERS[pocket] || "POWER-UP"); }
     if (tutorStep === 3) { if (S.dove || S.t > (S.tutorAt = S.tutorAt || S.t) + 5) { tutor = false; } return touch ? "DRAG DOWN TO DIVE" : "DOWN ARROW TO DIVE"; }
     return "";
   }
@@ -1239,8 +1352,9 @@
         return;
       }
       if (ui.state === "idle" && spins > 1 && px < VW / 2 - PANEL.w / 2 + 64 && py > PANEL.y + 147 && py < PANEL.y + 185) {
-        ui.bet = ui.bet % Math.min(3, spins) + 1;                 // one, two, three, and round again
-        tone(500 + ui.bet * 140, 0.06, "triangle", 0.08); board();
+        if (golds > 0) tone(240, 0.08, "sine", 0.05);             // a golden spin is always pulled on its own
+        else { ui.bet = ui.bet % Math.min(3, spins) + 1; tone(500 + ui.bet * 140, 0.06, "triangle", 0.08); }   // one, two, three, and round again
+        board();
       } else if (ui.state === "idle" && spins <= 0) tap(); else slotTap(px > VW / 2 ? "right" : "left");
       return;
     }
@@ -1318,6 +1432,13 @@
     }
   }
 
+  function divot(x, y, n) {            // blades of grass, kicked up where something lands
+    for (var i = 0; i < n; i++) {
+      particles.push({ kind: "grass", x: x + (Math.random() - 0.5) * 14, y: y, vx: (Math.random() - 0.5) * 190, vy: -80 - Math.random() * 170,
+                       life: 0, max: 0.45 + Math.random() * 0.35, rot: Math.random() * 6, size: 3 + Math.random() * 3.5 });
+    }
+  }
+
   // ---------- the clock ----------
 
   function update(dt) {
@@ -1326,10 +1447,10 @@
     flash = Math.max(0, flash - dt * 5);
     tod = S.phase === "over" ? lerp(tod, 0, Math.min(1, dt * 2.5))      // the day comes back with the ball
                              : lerp(tod, clamp(S.t / (QUARTER.secs * 2), 0, 2), Math.min(1, dt * 0.8));
-    popTick(dt);
+    popTick(dt); flyTick(dt);
     if (!idleGift && S.phase === "over" && lives <= 0 && ui.state === "idle" && now - lastInput > CARE.idleSecs && S.wait > CARE.idleSecs) {
       idleGift = true;                                     // a long pause at game over, once a visit: one on the house, and it cannot miss
-      spins += 1; ui.goldNext = true; away = false;
+      spins += 1; golds += 1; save("rollcorn-hang-golds", golds); away = false;
       ui.msg = "ONE ON THE HOUSE"; ui.daily = true;
       save("rollcorn-hang-spins", spins);
       slotSfx.boost(); board();
@@ -1338,14 +1459,14 @@
       var p = particles[j];
       p.life += dt;
       if (p.life < 0) continue;                           // fireworks go up one after another
-      p.vy += (p.kind === "kernel" ? 520 : p.kind === "dust" ? 120 : p.kind === "fw" ? 70 : 0) * dt;
+      p.vy += (p.kind === "kernel" ? 520 : p.kind === "grass" ? 640 : p.kind === "dust" ? 120 : p.kind === "fw" ? 70 : 0) * dt;
       if (p.kind === "fw") {
         p.vx *= 1 - dt * 1.6; p.vy *= 1 - dt * 1.6; p.x += p.vx * dt; p.y += p.vy * dt;
         if (p.life > p.max) particles.splice(j, 1);
         continue;
       }
       p.x += (p.vx - S.speed * 0.5) * dt; p.y += p.vy * dt;
-      if (p.kind === "kernel" && p.y > GY + 20 && p.vy > 0) { p.y = GY + 20; p.vy *= -0.35; p.vx *= 0.6; }
+      if (p.kind === "kernel" && p.y > FEET && p.vy > 0) { p.y = FEET; p.vy *= -0.35; p.vx *= 0.6; }
       if (p.life > p.max) particles.splice(j, 1);
     }
     for (var k = floaters.length - 1; k >= 0; k--) {
@@ -1367,7 +1488,7 @@
         S.rw = Math.min(1, S.rw + dt / 0.95);
         var back = 1 - Math.pow(1 - S.rw, 3);
         S.dist = S.rewindFrom * (1 - back);
-        S.y = lerp(GY - 6, GY + TURF_H * 0.5 - 9, back) - Math.sin(Math.PI * back) * 130;
+        S.y = lerp(FLOOR, FEET - 9, back) - Math.sin(Math.PI * back) * 130;
         S.spin -= dt * 12;
         if (S.rw >= 1) { S.spin = -0.5; S.sq = 1; tone(330, 0.08, "sine", 0.06); }
       }
@@ -1378,9 +1499,9 @@
       S.wait += dt;
       S.speed *= Math.max(0, 1 - dt * 5);
       S.dist += S.speed * dt;
-      if (S.y < GY - 6) {
+      if (S.y < FLOOR) {
         S.vy = Math.min(S.vy + GRAV * dt, 700); S.y += S.vy * dt; S.spin += dt * 14;
-        if (S.y >= GY - 6) { S.y = GY - 6; thud(0.3); dust(BX, GY, 12); S.wait = 0.15; }
+        if (S.y >= FLOOR) { S.y = FLOOR; thud(0.3); dust(BX, FEET, 10); divot(BX, FEET, 12); S.wait = 0.15; }
       } else if (S.wait > 0.4) finish();
       return;
     }
@@ -1418,6 +1539,14 @@
     }
     S.speed = 210 - 30 * (S.rookie || 0) + Math.min(150, S.t * 3.2);
     if (S.blockT > 0) S.blockT -= raw;
+    if (!pocket && rack.length && !(S.blockT > 0 || S.windT > 0 || S.superT > 0)) {      // the hand is free: the next one steps up from the sideline
+      S.stepT = (S.stepT || 0) + raw;
+      if (S.stepT > 0.9 && stepUp()) {
+        S.stepT = 0; S.steppedAt = now;
+        floaters.push({ text: "NEXT UP: " + POWERS[pocket], life: 0.3, color: "#fff" });
+        tone(660, 0.07, "triangle", 0.07); tone(990, 0.1, "triangle", 0.07, 0, 0.07);
+      }
+    }
     S.beatT -= raw;                                        // a quiet pulse that quickens with the ball
     if (S.beatT <= 0) {
       S.beatT += BEAT * 2 * 210 / Math.max(210, S.speed - (S.superT > 0 ? SUPER.speed : 0));
@@ -1454,10 +1583,16 @@
     S.trail.push({ x: S.dist, y: S.y });
     if (S.trail.length > 8) S.trail.shift();
     addPts(POINTS.second * dt, "air");
+    var sn = spinsFor(S.pts - S.base);
+    if (sn > (S.spinN || 0)) {                             // a segment of the meter just filled: a spin for the machine
+      S.spinN = sn; S.spinAt = now;
+      floaters.push({ text: "+1 SPIN", life: 0.2, color: "#fff" });
+      slotSfx.token();
+    }
     scoreEl.textContent = Math.floor(S.pts).toLocaleString("en-US");
 
     if (S.nextX - S.dist < VW + 120) spawn();
-    var bx = S.dist + BX, by = S.y, hit = "", i;
+    var bx = S.dist + BX, by = S.y, hit = "", killer = null, i;
 
     for (i = S.obs.length - 1; i >= 0; i--) {
       var o = S.obs[i], mid = o.x + o.w / 2, crest, hitWas = hit;
@@ -1471,7 +1606,7 @@
       if (S.blockT > 0 && o.kind !== "gate" && o.x - bx < 120) {     // the blockers get there first
         o.down = true; o.downAt = now; S.knocked += 1;
         addPts(BLOCK.knock);
-        burst(o.x + o.w / 2 - S.dist, GY - 50, 14); dust(o.x + o.w / 2 - S.dist, GY, 10);
+        burst(o.x + o.w / 2 - S.dist, BASE - 50, 14); dust(o.x + o.w / 2 - S.dist, FEET, 10);
         shake = Math.max(shake, 6); thud(0.4);
         floaters.push({ text: "KNOCKED DOWN  +" + BLOCK.knock * S.mult, life: 0, color: "#fff" });
         continue;
@@ -1480,45 +1615,47 @@
         // in a dream everything sinks out of the way, except the nemesis, which stays as a ghost
         if (o.kind === "jump") o.st = 2;
         else if (o.kind === "mascot") o.hi *= Math.max(0, 1 - raw * 2.6);
-        else { o.bot += (GY + 20 - o.bot) * Math.min(1, raw * 2.6); if (o.tip !== undefined) o.tip += (GY + 20 - o.tip) * Math.min(1, raw * 2.6); }
+        else { o.bot += (BASE + 20 - o.bot) * Math.min(1, raw * 2.6); if (o.tip !== undefined) o.tip += (BASE + 20 - o.tip) * Math.min(1, raw * 2.6); }
       }
       if (o.kind === "jump") {
-        // he leaves his feet so that the top of the jump meets the ball
+        // he crouches as the ball comes, then leaves his feet so that the top of the jump meets it
         var rise = Math.sqrt(2 * o.apex / 1500);
+        if (o.st === 0 && !o.crouchAt && mid - bx < S.speed * (rise + 0.2) + 12) o.crouchAt = now;
         if (o.st === 0 && mid - bx < S.speed * rise + 12) { o.st = 1; o.jv = Math.sqrt(2 * 1500 * o.apex); }
-        if (o.st === 1) { o.jy += o.jv * dt; o.jv -= 1500 * dt; if (o.jy <= 0) { o.jy = 0; o.st = 2; } }
-        crest = GY - o.jy - 74;
-        if (hitRect(bx, by, R - 2, mid - 11, GY - o.jy - 50, 22, 50) || hitRect(bx, by, R - 2, mid - 14, crest, 28, 24)) hit = "Picked off by the returner";
+        if (o.st === 1) { o.jy += o.jv * dt; o.jv -= 1500 * dt; if (o.jy <= 0) { o.jy = 0; o.st = 2; dust(mid - S.dist, FEET, 5); } }
+        crest = FEET - o.jy - MAN;
+        if (touches(o, bx, by)) hit = "Picked off by the returner";
       } else if (o.kind === "mascot") {
         // the mascot lobs one corn bomb at where the ball is heading; it bursts into popcorn at the end of its fuse
         if (!o.threw && S.dreaming <= 0 && (S.rookie || 0) < 0.5 && S.t >= QUARTER.secs * 2 - 2 && mid - bx < 430 && mid - bx > 220) {
           o.threw = true; o.threwAt = now;
-          var bAir = 1.0, bG = 620, bY = GY - 130, bAway = mid - bx;
-          S.crows.push({ x: mid, y: bY, vx: clamp(-(bAway - S.speed * bAir) / bAir, -330, -20), vy: (clamp(S.y, 90, GY - 90) - bY - 0.5 * bG * bAir * bAir) / bAir, g: bG, bomb: true, fuse: bAir + 0.3 });
+          var bAir = 1.0, bG = 620, bY = BED - o.jy - 50, bAway = mid - bx;       // out of its hands, wherever it is in its bounce
+          S.crows.push({ x: mid, y: bY, vx: clamp(-(bAway - S.speed * bAir) / bAir, -330, -20), vy: (clamp(S.y, 90, BASE - 90) - bY - 0.5 * bG * bAir * bAir) / bAir, g: bG, bomb: true, fuse: bAir + 0.3 });
           tone(880, 0.45, "sine", 0.06, 330);
         }
-        o.jy = o.hi * Math.abs(Math.sin(now * o.sp * 0.5 + o.ph));    // up and down on the trampoline
-        crest = GY - o.jy - 62;
-        if (hitRect(bx, by, R - 2, mid - 14, crest, 28, 62)) hit = "Bounced by the mascot";
+        o.jy = Math.max(0, o.hi - 14) * Math.abs(Math.sin(now * o.sp * 0.5 + o.ph));    // up off the trampoline and back, to the same height as ever
+        crest = BED - o.jy - 62;
+        if (touches(o, bx, by)) hit = "Bounced by the mascot";
       } else if (o.kind === "gate") {
         crest = o.bot - 3;
-        if (hitRect(bx, by, R - 2, o.x, o.bot - 3, o.w, 6) || hitRect(bx, by, R - 2, mid - 4, o.bot, 8, GY - o.bot + 40)) hit = "Doinked off the upright";
+        if (touches(o, bx, by)) hit = "Doinked off the upright";
         if (!o.judged && bx > mid) { o.judged = true; o.good = by > o.tip && by < o.bot; }   // between the uprights, over the bar
       } else {
         crest = o.bot;
-        if (hitRect(bx, by, R - 2, o.x, o.bot, o.w, GY - o.bot + 40)) hit = o.kind === "bench" ? "Landed on the bench" : "Blocked by the wall";
+        if (touches(o, bx, by)) hit = o.kind === "bench" ? "Landed on the bench" : "Blocked by the wall";
       }
       if (S.superT > 0 && hit !== hitWas) {             // a super punt goes straight through whatever it meets
         hit = hitWas;
         S.smashed += 1;
         addPts(SUPER.smash);
-        burst(o.x + o.w / 2 - S.dist, Math.min(by, GY - 20), 18);
+        burst(o.x + o.w / 2 - S.dist, Math.min(by, BASE - 20), 18);
         dust(o.x + o.w / 2 - S.dist, by, 8);
         shake = Math.max(shake, 8);
         thud(0.35);
         S.obs.splice(i, 1);
         continue;
       }
+      if (hit !== hitWas) killer = o;                    // remembered, so whoever stopped the punt can enjoy it
       if (bx > o.x - R && bx < o.x + o.w + R) {
         var room = crest - by - R;
         if (room > 0 && room < 13 && (o.slow || 0) < 0.3) { o.slow = (o.slow || 0) + raw; }
@@ -1555,8 +1692,8 @@
       }
       if (!kn.got && (kn.x - bx) * (kn.x - bx) + (kn.y - by) * (kn.y - by) < 24 * 24) {
         if (kn.spin) {                                  // a golden ear: a spin, there and then
-          kn.got = true; spins += 1; save("rollcorn-hang-spins", spins); S.goldEars = (S.goldEars || 0) + 1;
-          floaters.push({ text: "GOLDEN EAR:  +1 SPIN", life: 0, color: GOLD });
+          kn.got = true; goldSpin(); S.goldEars = (S.goldEars || 0) + 1;
+          floaters.push({ text: "GOLDEN EAR:  GOLDEN SPIN", life: 0, color: GOLD });
           sfx.gate(); burst(BX, kn.y, 18); buzz(30);
           continue;
         }
@@ -1578,7 +1715,7 @@
       if (hm.x - S.dist < -40) { S.helmets.splice(i, 1); continue; }
       if (!pocket && (hm.x - bx) * (hm.x - bx) + (hm.y - by) * (hm.y - by) < 28 * 28) {
         S.helmets.splice(i, 1);
-        pocket = hm.kind || "H";
+        pocket = hm.kind || "H"; kitSave();
         floaters.push({ text: POWERS[pocket] + " READY", life: 0.3, color: "#fff" });
         burst(BX, S.y, 10);
         S.caught = (S.caught || 0) + 1;
@@ -1592,20 +1729,20 @@
     }
     if (S.dreaming <= 0 && S.t > S.puntAt) {
       S.puntAt = S.t + 6 + Math.random() * 4;
-      var apex = 80 + Math.random() * 190, up = Math.sqrt(2 * 420 * (GY - 60 - apex));
-      S.crows.push({ x: S.dist + VW + 200, y: GY - 60, vx: -150 - Math.random() * 60, vy: -up, g: 420, punt: true });
+      var apex = 80 + Math.random() * 190, up = Math.sqrt(2 * 420 * (BASE - 60 - apex));
+      S.crows.push({ x: S.dist + VW + 200, y: BASE - 60, vx: -150 - Math.random() * 60, vy: -up, g: 420, punt: true });
     }
     // referees: each one winds up as the ball comes near and throws his flag up at it
     for (i = S.refs.length - 1; i >= 0; i--) {
-      var rf = S.refs[i], away = rf.x - bx;
-      if (away < -200) { S.refs.splice(i, 1); continue; }
-      if (rf.st === 0 && away < 330 && S.dreaming <= 0) rf.st = 1;
+      var rf = S.refs[i], gap = rf.x - bx;
+      if (gap < -200) { S.refs.splice(i, 1); continue; }
+      if (rf.st === 0 && gap < 330 && S.dreaming <= 0) rf.st = 1;
       if (rf.st === 1) {
         rf.wind += dt;
         if (rf.wind >= 0.28) {
           rf.st = 2;
-          var peak = 110 + Math.random() * 190, lift = Math.sqrt(2 * 900 * (GY - 44 - peak)), air = lift / 900;
-          S.crows.push({ x: rf.x - 8, y: GY - 44, vx: clamp(-(away - S.speed * air) / air, -280, -30), vy: -lift, g: 900 });
+          var peak = 110 + Math.random() * 190, lift = Math.sqrt(2 * 900 * (BASE - 44 - peak)), air = lift / 900;
+          S.crows.push({ x: rf.x - 8, y: BASE - 44, vx: clamp(-(gap - S.speed * air) / air, -280, -30), vy: -lift, g: 900 });
           tone(620, 0.07, "square", 0.04);
         }
       }
@@ -1614,7 +1751,7 @@
       var cr = S.crows[i];
       cr.vy += cr.g * dt;
       cr.x += cr.vx * dt; cr.y += cr.vy * dt;
-      if (cr.y > GY + 26) { S.crows.splice(i, 1); continue; }
+      if (cr.y > FEET + 4) { dust(cr.x - S.dist, FEET, 3); S.crows.splice(i, 1); continue; }     // it lands on the grass
       if (cr.x - S.dist < -60) { S.crows.splice(i, 1); continue; }
       if (cr.bomb && (cr.fuse -= dt) <= 0) {                         // the fuse runs out: popcorn, and no harm done
         burst(cr.x - S.dist, cr.y, 22); thud(0.3); tone(160, 0.2, "sawtooth", 0.06, 60);
@@ -1628,16 +1765,17 @@
         floaters.push({ text: "SWATTED  +" + BLOCK.swat * S.mult, life: 0, color: "#fff" });
         S.crows.splice(i, 1); continue;
       }
-      if ((cr.x - bx) * (cr.x - bx) + (cr.y - by) * (cr.y - by) < 20 * 20) hit = cr.bomb ? "Corn bombed by the mascot" : cr.punt ? "Hit by their punt" : "Flag on the play";
+      if ((cr.x - bx) * (cr.x - bx) + (cr.y - by) * (cr.y - by) < 20 * 20) { hit = cr.bomb ? "Corn bombed by the mascot" : cr.punt ? "Hit by their punt" : "Flag on the play"; killer = null; }
     }
     if (!S.passedLong && S.bestWas > 2 && S.t > S.bestWas) S.passedLong = true;   // past the longest-hang line
     if (!S.passedBest && S.bestPtsWas > 60 && S.pts > S.bestPtsWas) {
       S.passedBest = true;
       sfx.gate(); burst(BX, S.y, 30); shake = 6;
       fireworks();
-      floaters.push({ text: "NEW BEST!", life: 0, color: GOLD });
+      S.bestGold = S.base < S.bestPtsWas;                  // only the punt that began below the old best earns the golden spin; it is banked when the punt lands
+      floaters.push({ text: S.bestGold ? "NEW BEST!  GOLDEN SPIN" : "NEW BEST!", life: 0, color: GOLD });
     }
-    if (S.y > GY - 6) { S.y = GY - 6; hit = "Downed"; }
+    if (S.y > FLOOR) { S.y = FLOOR; hit = "Downed"; killer = null; }
     if (hit && S.safe > 0) {                            // just saved: nothing can touch it for a moment
       if (hit === "Downed") S.vy = TAP;
     } else if (hit && S.shield) {                       // the helmet takes one hit
@@ -1647,7 +1785,7 @@
       sfx.saved();
       burst(BX, S.y, 14);
       floaters.push({ text: "SAVED BY THE HELMET", life: 0, color: "#fff" });
-    } else if (hit) die(hit);
+    } else if (hit) { S.killer = killer; die(hit); }
   }
 
   // ---------- drawing ----------
@@ -1895,7 +2033,8 @@
     var cu = mix3(mix("#CFE2F1", "#E8957A", a), "#7E5796", "#1A2046", b);
     for (i = 0; i < clouds.length; i++) puffCloud(clouds[i].x, clouds[i].y, clouds[i].s, cc, cu);
 
-    // one range of hills, then the barn
+    // two ranges of hills, the far one paler, then the barn
+    hills(S.dist * 0.05 + 900, 50, 17, mix3(mix("#ABD9A4", "#B79F74", a), "#5C6F8A", "#16293B", b));
     hills(S.dist * 0.12 + 300, 26, 13, mix3(mix("#86C37A", "#7E9A5E", a), "#3F5A63", "#102A2A", b));
 
     var bx = ((520 - S.dist * 0.2) % 1300 + 1300) % 1300 - 120, by = GY - 16, u = 1.7;
@@ -1945,14 +2084,16 @@
     }
   }
 
-  // What has been built under "Build your stadium" stands behind the far sideline: bleachers with a crowd,
+  // There is always a small stand behind the far sideline, with a crowd that gets to its feet when something
+  // good happens. What is built under "Build your stadium" grows from there: more rows of bleachers,
   // a scoreboard that keeps the score, a press box, light poles, and a tunnel in the end zone. A finished
   // stadium stays, and each new one adds pennants along the top.
   function stadiumBack() {
     if (typeof built === "undefined") return;
     var lv = built.map(function (v) { return stadium > 1 ? 3 : v; });
-    if (!lv.some(function (v) { return v > 0; })) return;
     var base = GY - 12, off = S.dist * 0.42, P = 720, night = clamp(tod - 1, 0, 1), i, r;
+    var joy = clamp(1 - (now - cheerAt) / 1.7, 0, 1);              // how much of the cheer is left
+    var spark = clamp(1 - (now - sparkAt) / 1.6, 0, 1);            // and of the camera flashes, for a big win on the machine
     for (var k = Math.floor(off / P) - 1; k * P - off < VW + 40; k++) {
       var x0 = k * P - off, sx = x0 + 60, sw = 330;
       if (lv[3]) {                                                   // light poles, either side of the stand
@@ -1969,8 +2110,8 @@
           }
         }
       }
-      if (lv[0]) {                                                   // bleachers: three rows a level, and somebody in most seats
-        var rows = lv[0] * 3, rh = 7.5, top = base - rows * rh;
+      {                                                              // bleachers: five rows to begin with, two more a level, and somebody in most seats
+        var rows = 5 + lv[0] * 2, rh = 7.5, top = base - rows * rh;
         ctx.fillStyle = "#6F6F69"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.moveTo(sx - 8, base); ctx.lineTo(sx + 6, top - 3); ctx.lineTo(sx + sw - 6, top - 3); ctx.lineTo(sx + sw + 8, base); ctx.closePath(); ctx.fill(); ctx.stroke();
         for (r = 0; r < rows; r++) {
@@ -1980,7 +2121,8 @@
             var seed = (k * 131 + r * 17 + i * 7) % 11;
             if (seed === 0) continue;                                 // an empty seat here and there
             ctx.fillStyle = seed < 5 ? GOLD : seed < 8 ? "#151515" : "#F3F1E6";
-            ctx.fillRect(sx + inset + i * 9, ry + 1.2 + Math.sin(now * 3 + i + r) * 0.5, 5, 4.6);
+            ctx.fillRect(sx + inset + i * 9, ry + 1.2 - (joy > 0 ? Math.abs(Math.sin(now * 10 + i * 1.3 + r)) * 3.4 * joy : Math.sin(now * 3 + i + r) * 0.5), 5, 4.6);
+            if (spark > 0 && (k * 131 + r * 17 + i * 7 + Math.floor(now * 14) * 11) % 41 === 0) { ctx.fillStyle = "rgba(255,255,255," + spark.toFixed(2) + ")"; ctx.fillRect(sx + inset + i * 9 - 2, ry - 2.5, 9, 9); }
           }
         }
         if (lv[2]) {                                                 // the press box sits on top
@@ -2037,6 +2179,8 @@
       if (k < 0) continue;
       ctx.fillStyle = "rgba(255,255,255,.92)";
       ctx.fillRect(x - 1.2, GY, 2.4, TURF_H);
+      ctx.fillStyle = "rgba(255,255,255,.5)";                       // hash marks, a yard apart
+      for (var hm = 1; hm < 5; hm++) { ctx.fillRect(x + hm * YARD - 0.6, GY + 9, 1.2, 5); ctx.fillRect(x + hm * YARD - 0.6, GY + TURF_H - 15, 1.2, 5); }
       var yd = (k * 5) % 100;
       if (k > 0 && yd === 0) {
         ctx.fillStyle = GOLD; ctx.font = "700 16px " + DISPLAY;
@@ -2067,7 +2211,8 @@
   }
 
   // one defender, drawn from the feet up to a height of h; the top man reaches for the ball
-  function blocker(cx, feet, h, top) {
+  function blocker(cx, feet, h, top, seed) {
+    var sway = Math.sin(now * 2.4 + (seed || 0)), num = 10 + Math.abs(Math.round((seed || 0) * 7)) % 89;
     ctx.save();
     ctx.translate(cx, feet); ctx.scale(Math.max(1.05, Math.min(1.25, h / 58)), h / 58);   // always as wide as the space he blocks
     ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -2076,13 +2221,14 @@
     ctx.strokeStyle = "#8A1F1F"; ctx.lineWidth = 5.5; ctx.stroke();
     ctx.strokeStyle = INK; ctx.lineWidth = 7.5;
     ctx.beginPath();
-    if (top) { ctx.moveTo(-8, -37); ctx.lineTo(-13, -56); ctx.moveTo(8, -37); ctx.lineTo(13, -56); }
-    else { ctx.moveTo(-8, -36); ctx.lineTo(-20, -28); ctx.moveTo(8, -36); ctx.lineTo(20, -28); }
+    if (top) { ctx.moveTo(-8, -37); ctx.lineTo(-13 + sway * 1.8, -56); ctx.moveTo(8, -37); ctx.lineTo(13 + sway * 1.8, -56); }   // hands up, feeling for the ball
+    else { ctx.moveTo(-8, -36); ctx.lineTo(-20, -28 + sway * 2.5); ctx.moveTo(8, -36); ctx.lineTo(20, -28 - sway * 2.5); }       // arms out, keeping his balance
     ctx.stroke();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 4.5; ctx.stroke();
     ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 1.8;
     rr(-10, -41, 20, 23, 5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#8A1F1F"; ctx.fillRect(-4, -36, 8, 2.6); ctx.fillRect(-4, -31, 8, 2.6);
+    ctx.fillStyle = "#8A1F1F"; ctx.font = "700 13px " + DISPLAY; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(String(num), 0, -29, 16);                                                     // his number
     ctx.beginPath(); ctx.arc(0, -48, 8.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();           // helmet, face on
     ctx.fillStyle = "#E3B089"; rr(-5.5, -48.5, 11, 6.5, 2.5); ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.2;
@@ -2093,65 +2239,95 @@
   }
 
   // the punt-block wall: defenders standing on each other's shoulders, as tall as it needs to be
-  function wall(x, w, bot) {
-    var feet = GY + TURF_H * 0.5, tall = feet - bot, n = Math.max(1, Math.round(tall / 60)), each = tall / n, cx = x + w / 2;
+  function wall(x, w, bot, seed) {
+    var tall = FEET - bot, n = Math.max(1, Math.round(tall / 60)), each = tall / n, cx = x + w / 2;
     ctx.fillStyle = "rgba(0,0,0,.26)";
-    ctx.beginPath(); ctx.ellipse(cx + 4, feet + 2, w * 0.6, 5, 0, 0, Math.PI * 2); ctx.fill();
-    for (var i = 0; i < n; i++) blocker(cx, feet - i * each, each, i === n - 1);
+    ctx.beginPath(); ctx.ellipse(cx + 4, FEET + 2, w * 0.6, 5, 0, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < n; i++) blocker(cx, FEET - i * each, each, i === n - 1, (seed || 0) + i * 37);
   }
 
   // goalposts: put the ball between the uprights and over the bar for five
   function gate(o, x) {
-    var feet = GY + TURF_H * 0.5, cx = x + o.w / 2, l = x + 1, r = x + o.w - 1;
-    ctx.fillStyle = "rgba(255,225,90,.22)";
+    var cx = x + o.w / 2, l = x + 1, r = x + o.w - 1, wv = Math.sin(now * 7 + o.x * 0.05);
+    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(cx + 3, FEET + 2, 12, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,225,90," + (0.2 + 0.07 * Math.sin(now * 4)).toFixed(2) + ")";      // the way through, gently lit
     ctx.fillRect(l, o.tip, r - l, o.bot - o.tip);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (var pass = 0; pass < 2; pass++) {
       ctx.strokeStyle = pass ? "#F2C500" : INK; ctx.lineWidth = pass ? 4.5 : 8;
       ctx.beginPath();
-      ctx.moveTo(cx, feet); ctx.lineTo(cx, o.bot);
+      ctx.moveTo(cx, FEET); ctx.lineTo(cx, o.bot);
       ctx.moveTo(l, o.tip); ctx.lineTo(l, o.bot); ctx.lineTo(r, o.bot); ctx.lineTo(r, o.tip);
       ctx.stroke();
     }
-    ctx.fillStyle = RED; ctx.strokeStyle = INK; ctx.lineWidth = 1.2;                            // ribbons on the tips
-    [l, r].forEach(function (ux) { ctx.beginPath(); ctx.moveTo(ux, o.tip); ctx.lineTo(ux + 10, o.tip + 3.5); ctx.lineTo(ux, o.tip + 8); ctx.closePath(); ctx.fill(); ctx.stroke(); });
+    if (o.bot < FEET - 36) {                                                                     // the pad around the foot of the post
+      ctx.fillStyle = "#151515"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
+      rr(cx - 6.5, FEET - 27, 13, 27, 3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = GOLD; ctx.fillRect(cx - 5.6, FEET - 18, 11.2, 5);
+    }
+    ctx.fillStyle = RED; ctx.strokeStyle = INK; ctx.lineWidth = 1.2;                            // ribbons on the tips, in the wind
+    [l, r].forEach(function (ux) { ctx.beginPath(); ctx.moveTo(ux, o.tip); ctx.lineTo(ux + 10 + wv, o.tip + 3.5 + wv * 1.5); ctx.lineTo(ux, o.tip + 8); ctx.closePath(); ctx.fill(); ctx.stroke(); });
   }
 
-  // the other team's bench: three of them sitting it out, helmets on
+  // the other team's bench: three of them sitting it out, helmets on, and the water cooler at the end of it
   function bench(x, o) {
-    var seat = GY - 20, i;
+    var top = o.bot, seat = top + 44, i;
     ctx.fillStyle = "rgba(0,0,0,.24)";
-    ctx.beginPath(); ctx.ellipse(x + o.w / 2 + 4, GY + 8, o.w * 0.56, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.lineCap = "butt";
-    ctx.beginPath(); ctx.moveTo(x + 10, seat); ctx.lineTo(x + 10, GY + 6); ctx.moveTo(x + o.w - 10, seat); ctx.lineTo(x + o.w - 10, GY + 6); ctx.stroke();
-    ctx.strokeStyle = "#8C8C8C"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x + o.w / 2 + 4, FEET + 3, o.w * 0.56, 5, 0, 0, Math.PI * 2); ctx.fill();
+    if (seat < FEET) {                                                                           // the legs of the bench, and of the cooler's table
+      ctx.lineCap = "butt";
+      ctx.strokeStyle = INK; ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(x + 9, seat); ctx.lineTo(x + 9, FEET + 1); ctx.moveTo(x + 83, seat); ctx.lineTo(x + 83, FEET + 1);
+      ctx.moveTo(x + 99, seat); ctx.lineTo(x + 99, FEET + 1); ctx.moveTo(x + 115, seat); ctx.lineTo(x + 115, FEET + 1);
+      ctx.stroke();
+      ctx.strokeStyle = "#8C8C8C"; ctx.lineWidth = 3; ctx.stroke();
+    }
     for (i = 0; i < 3; i++) {
-      var px = x + 22 + i * 38;
+      var px = x + 22 + i * 28, nod = Math.sin(now * 1.6 + i * 2 + o.x) * 0.8;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
       ctx.strokeStyle = INK; ctx.lineWidth = 8.5;                                                 // legs, knees forward
-      ctx.beginPath(); ctx.moveTo(px, seat - 3); ctx.lineTo(px - 11, seat - 3); ctx.lineTo(px - 11, GY + 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, seat - 3); ctx.lineTo(px - 11, seat - 3); ctx.lineTo(px - 11, Math.max(seat, FEET - 1)); ctx.stroke();
       ctx.strokeStyle = "#8A1F1F"; ctx.lineWidth = 5.5; ctx.stroke();
       ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 1.8;
-      rr(px - 9, o.bot + 15, 19, 26, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#8A1F1F"; ctx.fillRect(px - 3, o.bot + 21, 8, 2.6); ctx.fillRect(px - 3, o.bot + 26, 8, 2.6);
-      ctx.beginPath(); ctx.arc(px - 1, o.bot + 9, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();      // helmet, facing the ball
-      ctx.fillStyle = "#E3B089"; rr(px - 9, o.bot + 7, 6, 7, 2); ctx.fill();
+      rr(px - 9, top + 15, 19, 26, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#8A1F1F"; ctx.fillRect(px - 3, top + 21, 8, 2.6); ctx.fillRect(px - 3, top + 26, 8, 2.6);
+      ctx.strokeStyle = INK; ctx.lineWidth = 6.5;                                                 // an arm, resting on the knee
+      ctx.beginPath(); ctx.moveTo(px - 1, top + 22); ctx.lineTo(px - 10, seat - 8); ctx.stroke();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3.8; ctx.stroke();
+      ctx.fillStyle = "#8A1F1F"; ctx.strokeStyle = INK; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(px - 1 + nod, top + 9, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();      // helmet, facing the ball
+      ctx.fillStyle = "#E3B089"; rr(px - 9 + nod, top + 7, 6, 7, 2); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px - 1 + nod, top + 9, 6.2, -Math.PI * 0.85, -Math.PI * 0.2); ctx.stroke();   // the stripe over the top
       ctx.strokeStyle = "#E6E6E6"; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(px - 4, o.bot + 9); ctx.lineTo(px - 11, o.bot + 10); ctx.lineTo(px - 10, o.bot + 15); ctx.lineTo(px - 3, o.bot + 15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px - 4 + nod, top + 9); ctx.lineTo(px - 11 + nod, top + 10); ctx.lineTo(px - 10 + nod, top + 15); ctx.lineTo(px - 3 + nod, top + 15); ctx.stroke();
     }
+    ctx.lineJoin = "round";
     ctx.fillStyle = "#3D6FB5"; ctx.strokeStyle = INK; ctx.lineWidth = 2;                         // the bench itself
-    rr(x, seat, o.w, 9, 3); ctx.fill(); ctx.stroke();
+    rr(x, seat, 92, 9, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#C9C9C9"; rr(x + 94, seat, 26, 5, 2); ctx.fill(); ctx.stroke();             // the cooler, on its own little table
+    ctx.fillStyle = "#F26A1B"; rr(x + 97, seat - 21, 20, 21, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fff"; rr(x + 96, seat - 25, 22, 6, 2.5); ctx.fill(); ctx.stroke();
+    ctx.fillRect(x + 100, seat - 14, 14, 4.5);
+    ctx.fillStyle = INK; ctx.fillRect(x + 94.5, seat - 6, 3.5, 2.6);
   }
 
   // the mascot: an ear of corn with a face, bouncing on a trampoline
   function mascot(cx, o) {
-    var bed = GY + 4, y = GY - o.jy, sag = o.jy < 12 ? (12 - o.jy) * 0.5 : 0;
-    ctx.strokeStyle = INK; ctx.lineWidth = 5; ctx.lineCap = "round";                             // trampoline
-    ctx.beginPath(); ctx.moveTo(cx - 30, bed); ctx.lineTo(cx - 34, bed + 18); ctx.moveTo(cx + 30, bed); ctx.lineTo(cx + 34, bed + 18); ctx.stroke();
-    ctx.strokeStyle = "#3D6FB5"; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(cx - 34, bed); ctx.quadraticCurveTo(cx, bed + sag * 2, cx + 34, bed); ctx.stroke();
+    var near = clamp(1 - o.jy / 16, 0, 1), y = BED - o.jy + near * 5;      // close to the bed it sags under him, and he squashes
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.fillStyle = "rgba(0,0,0,.24)"; ctx.beginPath(); ctx.ellipse(cx + 3, FEET + 2, 40, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 5;                                                    // the trampoline stands on the grass: legs, a brace, the bed
+    ctx.beginPath(); ctx.moveTo(cx - 30, BED); ctx.lineTo(cx - 34, FEET); ctx.moveTo(cx + 30, BED); ctx.lineTo(cx + 34, FEET); ctx.stroke();
+    ctx.strokeStyle = "#8C8C8C"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 32, BED + 10); ctx.lineTo(cx + 32, BED + 10); ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(cx - 34, BED); ctx.quadraticCurveTo(cx, BED + near * 10, cx + 34, BED); ctx.stroke();
+    ctx.strokeStyle = "#3D6FB5"; ctx.lineWidth = 5; ctx.stroke();
     ctx.save();
     ctx.translate(cx, y);
+    ctx.scale(1 + near * 0.08, 1 - near * 0.1);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.strokeStyle = INK; ctx.lineWidth = 4.5;
     ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(-8, 0); ctx.moveTo(6, -10); ctx.lineTo(8, 0);          // legs
@@ -2167,6 +2343,16 @@
     ctx.beginPath(); ctx.arc(-5, -44, 3.6, 0, Math.PI * 2); ctx.arc(5, -44, 3.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(-5.8, -44, 1.5, 0, Math.PI * 2); ctx.arc(4.2, -44, 1.5, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(0, -37, 5.5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    ctx.restore();
+  }
+
+  // the returner: he waits, crouches as the ball comes, and goes up with both hands
+  function returner(cx, o) {
+    var squat = o.st === 0 && o.crouchAt ? clamp((now - o.crouchAt) / 0.16, 0, 1) : 0;
+    ctx.save();
+    ctx.translate(cx, FEET - o.jy);
+    if (squat) ctx.scale(1 + squat * 0.1, 1 - squat * 0.17);
+    player(0, 0, kit(AWAY, { up: o.st === 1, air: o.jy > 0 }));
     ctx.restore();
   }
 
@@ -2342,30 +2528,102 @@
   }
 
   function slotLine() {
-    var sp = ui.sp, st = ui.state, jack = "JACKPOT " + Math.floor(pot).toLocaleString("en-US") + " CORN";
-    if (st === "spinning") return "MATCH 3 TO WIN";
+    var sp = ui.sp, st = ui.state;
+    if (st === "spinning") return ui.gold ? "GOLDEN SPIN: IT CANNOT MISS" : "MATCH 3 TO WIN";
     if (st === "respin") return "ONE REEL SPINS: MATCH IT FOR 3 OF A KIND";
     if (st === "flip") return "DOUBLE, OR NOTHING...";
     if (st === "kick") return "BONUS KICK: UP TO " + KICK.perfect * (ui.betNow || 1) + " CORN";
     if (st === "pair") return "PAIR: KEEP " + ui.pend + " CORN, OR TRY FOR 3 OF A KIND";
-    if (st === "double") return (ui.msg === "DOUBLED" ? "NOW " : "YOU WON ") + ui.pend + " CORN: KEEP, OR FLIP FOR " + ui.pend * 2;
+    if (st === "double") return (ui.msg === "DOUBLED" ? "NOW " : ui.msg.indexOf("SIDELINE") === 0 ? "SIDELINE FULL, SO " : "YOU WON ") + ui.pend + " CORN: KEEP, OR FLIP FOR " + ui.pend * 2;
     if (ui.daily && ui.msg) return ui.msg;
-    if (sp) return ui.msg + (/NO MATCH|GONE/.test(ui.msg) ? "  \u00B7  " + jack : "");
+    if (sp && (spins > 0 || now - (ui.quietAt || -9) < 3.2)) return ui.msg;
+    if (spins <= 0) {                                      // out of spins: what the round came to, and how the field earns more
+      var tips = [];
+      if (ui.tally) tips.push("THIS ROUND:  +" + ui.tally + " CORN");
+      tips.push(SPIN_AT[0] + " POINTS IN A PUNT EARNS A SPIN", "REACH HALFTIME FOR A GOLDEN SPIN", "EVERY EAR YOU CATCH FEEDS THE JACKPOT");
+      if (refillText()) tips.push(refillText());
+      return tips[Math.floor(now / 3.2) % tips.length];
+    }
     var show = SHOW.charAt(Math.floor(now / 1.7) % SHOW.length);                  // nothing spun yet: the prize list
-    return show === "C" ? "3 OF THESE:  " + jack : "3 OF THESE:  " + PRIZE[show];
+    return show === "C" ? "3 OF THESE:  THE JACKPOT" : "3 OF THESE:  " + PRIZE[show];
   }
 
-  // the pocket: what is held, and how to use it
+  // Prizes leave the machine and go where they belong: a power-up to the sideline, corn to the pile, a life to the
+  // row of balls, a game's corn to the jackpot. The prize is the player's the moment it is won; the flight only
+  // shows where it went, so nothing is lost if the next punt goes up before it lands.
+  var FLY = 0.55, flights = [], bumps = {}, landed = 0, tagAt = null;
+  var shownBank = -1, shownPot = -1, bankAt = 0, potAt = 0;     // the numbers on show count up to the real ones
+  function reelX(i) { return VW / 2 + (i - 1) * 76; }
+  function fly(sym, x0, y0, to, delay) { flights.push({ sym: sym, x0: x0, y0: y0, to: to, t: -(delay || 0) }); }
+  function flyWin(sym, to) { for (var i = 0; i < 3; i++) fly(sym, reelX(i), PANEL.y + 99, to, i * 0.07); }
+  function flyCorn(n, x0, y0, to, delay) {
+    for (var i = 0; i < n; i++) fly("K", x0 + (Math.random() - 0.5) * 34, y0 + (Math.random() - 0.5) * 12, to, (delay || 0) + i * 0.05);
+  }
+  function pending(to) { for (var i = 0; i < flights.length; i++) if (flights[i].to === to) return true; return false; }
+  function bump(key) { var a = now - (bumps[key] || -9); return a < 0.3 ? 1 + 0.32 * Math.sin(Math.PI * a / 0.3) : 1; }
+  function spot(to) {
+    if (to === "kit1") return pocketAt();
+    if (to === "kit2" || to === "kit3") return rackAt(to === "kit2" ? 0 : 1);
+    if (to === "lives") {
+      var live = Math.max(1, lives > 0 ? lives : extraLives), lw = 9 + Math.max(LIVES, live) * 25;
+      return { x: VW - 8 - lw + 17 + (live - 1) * 25, y: 25 };
+    }
+    if (to === "pot") return { x: VW / 2 + PANEL.w / 2 - 42, y: PANEL.y + 22 };
+    if (to === "next") return tagAt || { x: 70, y: 59 };
+    return { x: 22, y: 25 };                               // the corn pile
+  }
+  function flyTick(dt) {
+    for (var i = flights.length - 1; i >= 0; i--) {
+      var f = flights[i];
+      f.t += dt;
+      if (f.t >= FLY) { flights.splice(i, 1); bumps[f.to] = now; slotSfx.land(landed++); }
+    }
+    if (shownBank < 0) shownBank = bank;
+    if (shownPot < 0) shownPot = pot;
+    if (bank < shownBank) shownBank = bank;
+    else if (now >= bankAt && shownBank < bank) shownBank = Math.min(bank, shownBank + Math.max(1, (bank - shownBank) * 7) * dt);
+    var holding = ui.state === "spinning" && ui.sp && ui.sp.big;         // the pot is paid at the pull; the lights wait for the reels
+    if (now >= potAt && !holding) shownPot = Math.abs(pot - shownPot) < 0.6 ? pot : shownPot + (pot - shownPot) * Math.min(1, dt * 7);
+  }
+  function flyDraw() {
+    for (var i = 0; i < flights.length; i++) {
+      var f = flights[i];
+      if (f.t < 0) continue;
+      var e = f.t / FLY, k = e * e * (3 - 2 * e), at = spot(f.to), sc = 0.75 + 0.55 * Math.sin(Math.PI * k);
+      ctx.save();
+      ctx.translate(lerp(f.x0, at.x, k), lerp(f.y0, at.y, k) - Math.sin(Math.PI * k) * 44); ctx.scale(sc, sc);
+      if (f.sym === "K") { ctx.rotate(e * 5); kernel(1.2); }
+      else {
+        ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 15.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.scale(0.8, 0.8); drawSym(f.sym, 0, 0);
+      }
+      ctx.restore();
+    }
+  }
+
+  // the kit: the power-up in the hand, big, and the ones waiting on the sideline beside it
   function pocketAt() { return { x: VW - 34, y: 80 }; }
+  function rackAt(i) { return { x: VW - 75 - i * 31, y: 86 }; }
+  function badge(code, r) {
+    var big = r > 20;
+    ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = big ? 3 : 2;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = GOLD; ctx.lineWidth = big ? 3 : 2; ctx.beginPath(); ctx.arc(0, 0, r - (big ? 4 : 3), 0, Math.PI * 2); ctx.stroke();
+    ctx.scale(r / 24, r / 24); drawSym(code, 0, 0);
+  }
   function pocketDraw() {
-    if (!pocket) return;
-    var at = pocketAt(), live = S.phase === "play", pulse = live ? 1 + 0.06 * Math.sin(now * 7) : 1;
-    ctx.save(); ctx.translate(at.x, at.y); ctx.scale(pulse, pulse);
-    ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
-    drawSym(pocket, 0, 0);
-    ctx.restore();
+    var at = pocketAt(), live = S.phase === "play", i;
+    for (i = 0; i < rack.length; i++) {
+      if (pending("kit" + (i + 2))) continue;
+      var ra = rackAt(i), rb = bump("kit" + (i + 2));
+      ctx.save(); ctx.translate(ra.x, ra.y); ctx.scale(rb, rb); badge(rack[i], 13); ctx.restore();
+    }
+    if (!pocket || pending("kit1")) return;
+    var pulse = (live ? 1 + 0.06 * Math.sin(now * 7) : 1) * bump("kit1") * (live && now - (S.steppedAt || -9) < 0.25 ? 1.25 : 1);
+    ctx.save(); ctx.translate(at.x, at.y); ctx.scale(pulse, pulse); badge(pocket, 24); ctx.restore();
+    if (!live) return;                                     // how to use it, while the ball is up
     ctx.font = "700 10px " + LABEL; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     var tag = window.matchMedia && window.matchMedia("(pointer: coarse)").matches ? "TAP" : "SPACE";
     ctx.fillStyle = INK; rr(at.x - 22, at.y + 27, 44, 15, 6); ctx.fill();
@@ -2374,18 +2632,19 @@
   function loaded() {
     pocketDraw();
     popDraw();
-    var have = [];
-    if (extraLife) have.push("EXTRA LIFE");
-    if (doubleNext) have.push("2X POINTS");
-    if (!have.length) return;
-    var text = "NEXT PUNT:  " + have.join("  \u00B7  ");
-    ctx.font = "700 12px " + LABEL; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    var tw = Math.min(VW - 16, ctx.measureText(text).width + 18);
-    ctx.fillStyle = GOLD; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    var bx0 = VW / 2 - tw / 2, by0 = S.phase === "intro" ? 10 : VW < 560 ? 90 : 48;
-    if (S.phase !== "intro" && VW >= 560) bx0 = 8;
-    rr(bx0, by0, tw, 22, 7); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = INK; ctx.fillText(text, bx0 + 9, by0 + 11.5, tw - 16);
+    if (doubleNext) {
+      var text = "NEXT PUNT:  2X POINTS";
+      ctx.font = "700 12px " + LABEL; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      var tw = Math.min(VW - 16, ctx.measureText(text).width + 18), plain = S.phase === "intro" && !slotVisible();
+      var bx0 = plain ? VW / 2 - tw / 2 : 8, by0 = plain ? 10 : S.phase !== "intro" && VW < 560 ? 90 : 48, tb = bump("next");
+      tagAt = { x: bx0 + tw / 2, y: by0 + 11 };
+      ctx.save(); ctx.translate(tagAt.x, tagAt.y); ctx.scale(tb, tb);
+      ctx.fillStyle = GOLD; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+      rr(-tw / 2, -11, tw, 22, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = INK; ctx.fillText(text, -tw / 2 + 9, 0.5, tw - 16);
+      ctx.restore();
+    } else tagAt = null;
+    flyDraw();
   }
 
   function handOff(title) {
@@ -2395,69 +2654,94 @@
       slotPanel();
       ctx.restore();
     }
+    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
     var lines = [title, "Tap when the arrow is on the gold"];
-    if (spins > 0) lines.push(spins + (spins === 1 ? " spin saved" : " spins saved") + " for after this punt");
+    if (pocket) lines.push((touch ? "In the air, tap the badge: " : "In the air, press space: ") + POWERS[pocket].toLowerCase());   // what the machine sent out with the punter
+    else if (spins > 0) lines.push(spins + (spins === 1 ? " spin saved" : " spins saved") + " for after this punt");
     sign(lines, 170, "gold", now - awayAt);
   }
 
-  // the machine, under the sign: reels, then what to do next
+  // the machine, under the sign: the jackpot in lights, the reels, then what to do next
   function slotPanel() {
-    var w = PANEL.w, h = PANEL.h, x = VW / 2 - w / 2, y = PANEL.y, sp = ui.sp, i;
+    var w = PANEL.w, h = PANEL.h, x = VW / 2 - w / 2, y = PANEL.y, sp = ui.sp, i, g;
     var won = ui.state === "double" || ui.state === "pair" || ui.state === "kick" || (ui.state === "idle" && sp && (sp.big || boostValue(sp) || ui.msg.indexOf("KEPT") === 0 || ui.msg === "DOUBLED"));
-    ctx.fillStyle = "rgba(0,0,0,.3)"; rr(x + 5, y + 6, w, h, 12); ctx.fill();
-    ctx.fillStyle = "#111"; ctx.strokeStyle = won && Math.sin(now * 14) > 0 ? "#fff" : GOLD; ctx.lineWidth = 4;
-    rr(x, y, w, h, 12); ctx.fill(); ctx.stroke();
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = GOLD; ctx.font = "700 12px " + LABEL;
-    // the sign across the top: the Roll Corn wordmark, with the mark standing in for each O
-    ctx.fillStyle = GOLD; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    var celebrating = won && now - (ui.winNow || -9) < 4;
+    var golden = ui.state === "idle" ? golds > 0 && spins > 0 : !!ui.gold;          // a golden spin is next, or is on the reels now
+    // the cabinet
+    ctx.fillStyle = "rgba(0,0,0,.34)"; rr(x + 5, y + 7, w, h, 14); ctx.fill();
+    g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#3A342B"); g.addColorStop(0.45, "#171717"); g.addColorStop(1, "#070707");
+    ctx.fillStyle = g; ctx.strokeStyle = celebrating && Math.sin(now * 14) > 0 ? "#fff" : GOLD; ctx.lineWidth = 4;
+    rr(x, y, w, h, 14); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.10)"; ctx.lineWidth = 1.5; rr(x + 5.5, y + 5.5, w - 11, h - 11, 9); ctx.stroke();
+    // the plate across the top: the wordmark, with the mark standing in for each O, and the jackpot in lights
+    g = ctx.createLinearGradient(0, y + 7, 0, y + 37); g.addColorStop(0, "#FFE873"); g.addColorStop(1, "#E2AC00");
+    ctx.fillStyle = g; ctx.strokeStyle = INK; ctx.lineWidth = 2;
     rr(x + 8, y + 7, w - 16, 30, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = INK; ctx.font = "700 23px " + DISPLAY; ctx.textBaseline = "middle";
-    var parts = ["R", null, "LL", " ", "C", null, "RN"], widths = [], total = 0, m = 21;
-    for (var pi = 0; pi < parts.length; pi++) { widths[pi] = parts[pi] === null ? m + 1 : parts[pi] === " " ? 9 : ctx.measureText(parts[pi]).width; total += widths[pi]; }
-    var wx = VW / 2 - total / 2;
-    ctx.textAlign = "left";
-    for (pi = 0; pi < parts.length; pi++) {
-      if (parts[pi] === null) mark(wx + widths[pi] / 2, y + 22, m);
+    ctx.fillStyle = INK; ctx.font = "700 20px " + DISPLAY; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    var parts = ["R", null, "LL", " ", "C", null, "RN"], wx = x + 17, m = 18, pw;
+    for (var pi = 0; pi < parts.length; pi++) {
+      pw = parts[pi] === null ? m + 1 : parts[pi] === " " ? 7 : ctx.measureText(parts[pi]).width;
+      if (parts[pi] === null) mark(wx + pw / 2, y + 22, m);
       else if (parts[pi] !== " ") ctx.fillText(parts[pi], wx, y + 23.5);
-      wx += widths[pi];
+      wx += pw;
     }
+    var lx0 = x + w - 130, lw0 = 118, fed = now - (bumps.pot || -9) < 0.35;
+    ctx.fillStyle = "#1B0606"; ctx.strokeStyle = INK; ctx.lineWidth = 2; rr(lx0, y + 10, lw0, 24, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#FF9C7A"; ctx.font = "700 9px " + LABEL; ctx.fillText("JACKPOT", lx0 + 7, y + 22.5);
+    ctx.fillStyle = fed ? "#fff" : "#FFD84A"; ctx.font = "700 18px " + DISPLAY; ctx.textAlign = "right";
+    ctx.fillText(Math.round(shownPot < 0 ? pot : shownPot).toLocaleString("en-US"), lx0 + lw0 - 7, y + 23, lw0 - 56);
     ctx.textAlign = "center";
-    ctx.fillStyle = GOLD; ctx.font = "700 12px " + LABEL;
+    ctx.fillStyle = golden ? "#FFE873" : GOLD; ctx.font = "700 12px " + LABEL;
     ctx.fillText(slotLine(), VW / 2, y + 47, w - 20);
     var winTop = y + 56, winH = 86, mid = winTop + winH / 2, strip = REEL, row = 38;   // the rows above and below peek in
+    g = ctx.createLinearGradient(0, winTop - 5, 0, winTop + winH + 5); g.addColorStop(0, "#F4F4F4"); g.addColorStop(0.5, "#8F8F8F"); g.addColorStop(1, "#DCDCDC");
+    ctx.fillStyle = g; ctx.strokeStyle = INK; ctx.lineWidth = 2;                         // the chrome the reels sit in
+    rr(VW / 2 - 115, winTop - 5, 230, winH + 10, 10); ctx.fill(); ctx.stroke();
+    var sy = sp ? sp.syms : "", three = !!sp && sy.charAt(0) === sy.charAt(1) && sy.charAt(1) === sy.charAt(2);
+    var showWin = !!sp && (ui.state === "double" || ui.state === "pair" || ui.state === "kick" || now - (ui.winNow || -9) < 2.2) && ui.msg.indexOf("GONE") < 0 && ui.msg.indexOf("NO MATCH") < 0;
     for (i = 0; i < 3; i++) {
-      var cx = VW / 2 + (i - 1) * 76, spinning = (ui.state === "spinning" && i >= ui.stopped) || (ui.state === "respin" && sp && i === sp.odd) || ui.state === "flip";
+      var cx = reelX(i), spinning = (ui.state === "spinning" && i >= ui.stopped) || (ui.state === "respin" && sp && i === sp.odd) || ui.state === "flip";
       var waiting = spinning && i === 2 && ui.tease && ui.stopped === 2;          // two the same: all eyes on the last reel
-      ctx.fillStyle = ui.gold && ui.state !== "idle" ? "#FFEFA8" : "#fff"; ctx.strokeStyle = waiting ? GOLD : INK; ctx.lineWidth = waiting ? 4 : 2.5;
+      var inWin = !spinning && showWin && (three || (sp.pair && i !== sp.odd));
+      ctx.fillStyle = golden ? "#FFF2B8" : "#FFFDF5"; ctx.strokeStyle = waiting ? GOLD : INK; ctx.lineWidth = waiting ? 4 : 2.5;
       rr(cx - 33, winTop, 66, winH, 7); ctx.fill(); ctx.stroke();
       ctx.save();
       ctx.beginPath(); ctx.rect(cx - 31, winTop + 2, 62, winH - 4); ctx.clip();
+      if (inWin) {                                             // rays turn behind a winning symbol
+        ctx.save(); ctx.translate(cx, mid); ctx.rotate(now * 1.5 + i);
+        ctx.fillStyle = "rgba(255,196,0,.45)";
+        for (var ry = 0; ry < 8; ry++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, -64); ctx.lineTo(8, -64); ctx.closePath(); ctx.fill(); }
+        ctx.restore();
+      }
       if (spinning) {
         var roll = (ui.pos ? ui.pos[i] : 0) + i * 1.7, k = Math.floor(roll), off = (roll - k) * row;
-        for (var rw = -2; rw <= 2; rw++) drawSym(strip.charAt(((k - rw) % strip.length + strip.length) % strip.length), cx, mid + rw * row + off);
+        var left = ui.state === "spinning" ? ui.stopAt[i] - ui.t : ui.until - ui.t, fast = clamp(left / 0.35, 0, 1);   // it blurs while it runs flat out
+        for (var rw = -2; rw <= 2; rw++) {
+          ctx.save(); ctx.translate(cx, mid + rw * row + off); ctx.scale(1, 1 + 0.35 * fast); ctx.globalAlpha = 1 - 0.3 * fast;
+          drawSym(strip.charAt(((k - rw) % strip.length + strip.length) % strip.length), 0, 0);
+          ctx.restore();
+        }
       } else if (sp) {
         var at = strip.indexOf(sp.syms.charAt(i)), since = now - ((ui.stopNow && ui.stopNow[i]) || -9);
         var bounce = since < 0.4 ? 9 * Math.exp(-since * 12) * Math.cos(since * 28) : 0;       // it lands with a little kick
         drawSym(strip.charAt((at + strip.length - 1) % strip.length), cx, mid - row + bounce);
-        var sy = sp.syms, three = sy.charAt(0) === sy.charAt(1) && sy.charAt(1) === sy.charAt(2);
-        var inWin = (three || (sp.pair && i !== sp.odd)) && (ui.state === "double" || ui.state === "pair" || ui.state === "kick" || now - (ui.winNow || -9) < 2.2) && ui.msg.indexOf("GONE") < 0 && ui.msg.indexOf("NO MATCH") < 0;
         if (inWin) {
           var pu = 1 + 0.16 * Math.abs(Math.sin((now - (ui.winNow || 0)) * 6));
           ctx.save(); ctx.translate(cx, mid + bounce); ctx.scale(pu, pu); drawSym(sp.syms.charAt(i), 0, 0); ctx.restore();
         } else drawSym(sp.syms.charAt(i), cx, mid + bounce);
         drawSym(strip.charAt((at + 1) % strip.length), cx, mid + row + bounce);
       } else drawSym(SHOW.charAt(Math.floor(now / 1.7) % SHOW.length), cx, mid);        // the prize list, turning over
-      ctx.fillStyle = "rgba(17,17,17,.34)";                                          // the rows off the line sit in shadow
-      ctx.fillRect(cx - 31, winTop + 2, 62, 26); ctx.fillRect(cx - 31, winTop + winH - 28, 62, 26);
+      g = ctx.createLinearGradient(0, winTop, 0, winTop + winH);                        // the reel is a drum: it falls into shadow above and below the line
+      g.addColorStop(0, "rgba(0,0,0,.66)"); g.addColorStop(0.32, "rgba(0,0,0,0)"); g.addColorStop(0.68, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.66)");
+      ctx.fillStyle = g; ctx.fillRect(cx - 31, winTop + 2, 62, winH - 4);
+      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(cx - 31, winTop + 2, 62, 2.5);   // a line of light on the glass
       ctx.restore();
     }
-    ctx.strokeStyle = won ? GOLD : RED; ctx.lineWidth = 2; ctx.setLineDash([]);       // the payline
+    ctx.strokeStyle = won ? GOLD : RED; ctx.lineWidth = 2; ctx.setLineDash([]); ctx.lineCap = "butt";       // the payline
     ctx.beginPath(); ctx.moveTo(x + 18, mid); ctx.lineTo(VW / 2 - 76 - 33, mid); ctx.moveTo(VW / 2 + 76 + 33, mid); ctx.lineTo(x + w - 18, mid); ctx.stroke();
     ctx.fillStyle = won ? GOLD : RED;
     ctx.beginPath(); ctx.moveTo(x + 14, mid - 6); ctx.lineTo(x + 23, mid); ctx.lineTo(x + 14, mid + 6); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x + w - 14, mid - 6); ctx.lineTo(x + w - 23, mid); ctx.lineTo(x + w - 14, mid + 6); ctx.closePath(); ctx.fill();
-    var celebrating = won && now - (ui.winNow || -9) < 4;
     var rise = now - (ui.winNow || -9);
     if (ui.pend > 0 && rise < 1.3 && (ui.state === "double" || ui.state === "pair")) {      // the prize lifts off the payline
       ctx.globalAlpha = clamp(1.6 - rise * 1.3, 0, 1);
@@ -2467,11 +2751,13 @@
       ctx.globalAlpha = 1;
     }
     for (var bl = 0; bl < 8; bl++) {                                                  // bulbs down each side
-      var lx = bl < 4 ? x + 8 : x + w - 8, ly = winTop + 12 + (bl % 4) * 21 + (bl % 4 > 1 ? 0 : 0);
+      var lx = bl < 4 ? x + 8 : x + w - 8, ly = winTop + 12 + (bl % 4) * 21;
       if (bl % 4 === 1 || bl % 4 === 2) ly += bl % 4 === 1 ? -4 : 4;                  // leave room for the payline arrows
       var lit = celebrating ? (Math.floor(now * 10) + bl) % 2 === 0 :
                 ui.state === "spinning" ? (Math.floor(now * 14) + bl) % 3 === 0 :
+                golden ? (Math.floor(now * 7) + bl) % 2 === 0 :
                 spins > 0 ? (Math.floor(now * 3) + bl) % 4 === 0 : false;
+      if (lit) { ctx.fillStyle = "rgba(255,243,160,.28)"; ctx.beginPath(); ctx.arc(lx, ly, 7, 0, Math.PI * 2); ctx.fill(); }
       ctx.fillStyle = lit ? "#FFF3A0" : "#5A4B00"; ctx.strokeStyle = INK; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(lx, ly, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
@@ -2488,10 +2774,14 @@
     ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.arc(kx - 2.5, ky - 3, 2.6, 0, Math.PI * 2); ctx.fill();
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     var by = y + 151, bh = 30;
+    function pill(px0, pw0, top, bot, edge) {                  // a button, with a little shine along the top of it
+      var pg = ctx.createLinearGradient(0, by, 0, by + bh); pg.addColorStop(0, top); pg.addColorStop(1, bot);
+      ctx.fillStyle = pg; ctx.strokeStyle = edge || INK; ctx.lineWidth = 2.5; rr(px0, by, pw0, bh, 8); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.26)"; rr(px0 + 3, by + 3, pw0 - 6, 9, 4.5); ctx.fill();
+    }
     if (ui.state === "double" || ui.state === "pair") {                          // two buttons: keep it, or take the chance
-      ctx.lineWidth = 2.5; ctx.strokeStyle = INK;
-      ctx.fillStyle = "#fff"; rr(x + 10, by, w / 2 - 15, bh, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = GOLD; rr(VW / 2 + 5, by, w / 2 - 15, bh, 7); ctx.fill(); ctx.stroke();
+      pill(x + 10, w / 2 - 15, "#FFFFFF", "#D9D5C6");
+      pill(VW / 2 + 5, w / 2 - 15, "#FFE873", "#E2AC00");
       ctx.fillStyle = INK; ctx.font = "700 15px " + LABEL;
       ctx.fillText("KEEP  +" + ui.pend + " CORN", x + 10 + (w / 2 - 15) / 2, by + bh / 2 + 1, w / 2 - 24);
       ctx.fillText(ui.state === "pair" ? "TRY FOR 3" : "DOUBLE OR NOTHING", VW / 2 + 5 + (w / 2 - 15) / 2, by + bh / 2 + 1, w / 2 - 24);
@@ -2511,46 +2801,76 @@
       ctx.fillText(ui.auto ? "AUTO  \u00B7  TAP TO STOP IT" : "TAP TO STOP", VW / 2, by + bh / 2);
     } else if (spins > 0) {
       var pulse = 0.5 + 0.5 * Math.sin(now * 5);
-      ctx.fillStyle = mix("#E0B400", "#FFE45C", pulse); ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
       var sw2 = spins > 1 ? w - 76 - 56 : w - 76;                                  // room for the AUTO chip when there are spins to run through
-      rr(x + 66, by, sw2, bh, 7); ctx.fill(); ctx.stroke();
+      pill(x + 66, sw2, golden ? "#FFF8D0" : mix("#FFE873", "#FFF3A8", pulse), golden ? "#F2B600" : mix("#D9A600", "#F0C21C", pulse));
+      if (golden) {                                                               // a golden spin: light runs across the button
+        ctx.save(); rr(x + 66, by, sw2, bh, 8); ctx.clip();
+        var gs = x + 66 - 30 + ((now * 0.8) % 1) * (sw2 + 60);
+        ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.moveTo(gs, by); ctx.lineTo(gs + 14, by); ctx.lineTo(gs + 2, by + bh); ctx.lineTo(gs - 12, by + bh); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
       ctx.fillStyle = INK; ctx.font = "700 15px " + LABEL;
-      ctx.fillText(ui.auto ? "AUTO  (" + spins + ")" : (ui.goldNext ? "GOLDEN SPIN" : "SPIN") + "  (" + spins + " LEFT)", x + 66 + sw2 / 2, by + bh / 2 + 1, sw2 - 12);
+      ctx.fillText(ui.auto ? "AUTO  (" + spins + ")" : (golds > 0 ? "GOLDEN SPIN" : "SPIN") + "  (" + spins + " LEFT)", x + 66 + sw2 / 2, by + bh / 2 + 1, sw2 - 12);
       if (spins > 1) {
-        ctx.fillStyle = ui.auto ? "#fff" : "#2A2A2A"; ctx.strokeStyle = ui.auto ? INK : GOLD; ctx.lineWidth = 2.5;
-        rr(x + w - 60, by, 50, bh, 7); ctx.fill(); ctx.stroke();
+        if (ui.auto) pill(x + w - 60, 50, "#FFFFFF", "#D9D5C6"); else pill(x + w - 60, 50, "#3A3A3A", "#1E1E1E", GOLD);
         ctx.fillStyle = ui.auto ? INK : GOLD; ctx.font = "700 14px " + DISPLAY;
         ctx.fillText(ui.auto ? "STOP" : "AUTO", x + w - 35, by + bh / 2 + 1);
       }
-      var bet = Math.max(1, Math.min(ui.bet, spins));                              // the stake chip: tap it to play two or three spins at once
-      ctx.fillStyle = bet > 1 ? "#fff" : "#2A2A2A"; ctx.strokeStyle = bet > 1 ? INK : GOLD; ctx.lineWidth = 2.5;
-      rr(x + 10, by, 50, bh, 7); ctx.fill(); ctx.stroke();
+      var bet = golds > 0 ? 1 : Math.max(1, Math.min(ui.bet, spins));              // the stake chip: tap it to play two or three spins at once
+      if (bet > 1) pill(x + 10, 50, "#FFFFFF", "#D9D5C6"); else pill(x + 10, 50, "#3A3A3A", "#1E1E1E", GOLD);
       ctx.fillStyle = bet > 1 ? INK : GOLD; ctx.font = "700 8px " + LABEL;
       ctx.fillText("BET", x + 35, by + 8);
       ctx.font = "700 15px " + DISPLAY;
       ctx.fillText(bet + (bet === 1 ? " SPIN" : " SPINS"), x + 35, by + 20.5, 44);
-    } else {
-      ctx.fillStyle = won ? GOLD : "#B9B5A5"; ctx.font = "700 15px " + LABEL;
-      ctx.fillText((refillText() && !ui.tally && !pocket ? refillText() : ui.tally ? "THIS ROUND  +" + ui.tally + " CORN" + (pocket ? " AND " + POWERS[pocket] : "") : pocket ? POWERS[pocket] + " READY" : ui.msg) + "  \u00B7  TAP TO PUNT", VW / 2, by + bh / 2, w - 24);
+    } else {                                                                     // out of spins: one way on, and it is back to the field
+      var gp = 0.5 + 0.5 * Math.sin(now * 4), kitN = (pocket ? 1 : 0) + rack.length;
+      pill(x + 10, w - 20, mix("#62C972", "#7BDD8A", gp), mix("#2F8F41", "#3BA650", gp));
+      var go = extraLives ? "KEEP YOUR GAME GOING" : kitN > 1 ? "PUNT WITH YOUR " + kitN + " POWER-UPS" : kitN ? "PUNT WITH YOUR " + POWERS[pocket] : S.phase === "intro" ? "PUNT" : "PUNT AGAIN";
+      ctx.font = "700 16px " + LABEL; ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 3; ctx.strokeText(go, VW / 2, by + bh / 2 + 1, w - 40);
+      ctx.fillStyle = "#fff"; ctx.fillText(go, VW / 2, by + bh / 2 + 1, w - 40);
     }
     // the harvest track along the foot: five rewards, and the next one named
-    var hn = hvNext(), top = hvAt(HARVEST.length - 1), hx = x + 66, hw = w - 76 - 78, fresh = now - (ui.rewardNow || -9) < 2.6;
+    var hn = hvNext(), top = hvAt(HARVEST.length - 1), hx2 = x + 66, hw = w - 76 - 78, fresh = now - (ui.rewardNow || -9) < 2.6;
     if (fresh) {                                           // a reward just landed: the row says so, and nothing else
       ctx.font = "700 12px " + LABEL; ctx.textBaseline = "middle"; ctx.textAlign = "center";
       ctx.fillStyle = Math.sin(now * 14) > 0 ? "#fff" : GOLD; ctx.fillText(ui.reward, VW / 2, y + 193, w - 24);
     } else {
-    ctx.font = "700 10px " + LABEL; ctx.textBaseline = "middle"; ctx.textAlign = "left";
-    ctx.fillStyle = "#B9B5A5"; ctx.fillText("REWARDS", x + 12, y + 193, 50);
-    ctx.fillStyle = "#3A3A3A"; rr(hx, y + 189, hw, 8, 4); ctx.fill();
-    ctx.fillStyle = fresh && Math.sin(now * 16) > 0 ? "#fff" : GOLD; rr(hx, y + 189, Math.max(4, hw * clamp(hvPts / top, 0, 1)), 8, 4); ctx.fill();
-    for (var hm2 = 0; hm2 < HARVEST.length; hm2++) {
-      ctx.fillStyle = hvPts >= hvAt(hm2) ? "#fff" : "#8A8676";
-      ctx.beginPath(); ctx.arc(hx + hw * hvAt(hm2) / top, y + 193, 3.2, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.textAlign = "right"; ctx.fillStyle = fresh ? "#fff" : GOLD;
-    ctx.fillText("NEXT: " + HARVEST[hn].text, x + w - 12, y + 193, 74);
+      ctx.font = "700 10px " + LABEL; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+      ctx.fillStyle = "#B9B5A5"; ctx.fillText("REWARDS", x + 12, y + 193, 50);
+      ctx.fillStyle = "#3A3A3A"; rr(hx2, y + 189, hw, 8, 4); ctx.fill();
+      ctx.fillStyle = GOLD; rr(hx2, y + 189, Math.max(4, hw * clamp(hvPts / top, 0, 1)), 8, 4); ctx.fill();
+      for (var hm2 = 0; hm2 < HARVEST.length; hm2++) {
+        ctx.fillStyle = hvPts >= hvAt(hm2) ? "#fff" : "#8A8676";
+        ctx.beginPath(); ctx.arc(hx2 + hw * hvAt(hm2) / top, y + 193, 3.2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.textAlign = "right"; ctx.fillStyle = GOLD;
+      ctx.fillText("NEXT: " + HARVEST[hn].text, x + w - 12, y + 193, 74);
     }
     ctx.textAlign = "center";
+  }
+
+  // The lives and the corn, in the top corners. In the air the corn is what this punt has caught; while the
+  // machine is open it is the whole pile, counting up as prizes land in it.
+  function chips(pile) {
+    var live = lives > 0 ? lives : extraLives, ln = Math.max(LIVES, live), lw = 9 + ln * 25, lit = live - (pending("lives") ? 1 : 0), lb = bump("lives");
+    ctx.strokeStyle = INK; ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.lineWidth = 2;
+    rr(VW - 8 - lw, 8, lw, 34, 7); ctx.fill(); ctx.stroke();
+    for (var lf = 0; lf < ln; lf++) {
+      var on = lf < lit, sc = on && lf === lit - 1 ? lb : 1;
+      ctx.save(); ctx.translate(VW - 8 - lw + 17 + lf * 25, 25); ctx.scale(sc, sc);
+      ctx.fillStyle = on ? "#8A4B1F" : "#D4D0C2"; ctx.strokeStyle = on ? INK : "#A9A596"; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.ellipse(0, 0, 10, 6.5, -0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (on) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-3.5, 2); ctx.lineTo(3.5, -2); ctx.stroke(); }
+      ctx.restore();
+    }
+    var text = (pile ? Math.round(shownBank < 0 ? bank : shownBank) : S.got).toLocaleString("en-US"), cb = bump("corn");
+    ctx.font = "700 20px " + DISPLAY; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    var cw2 = Math.max(74, ctx.measureText(text).width + 38);
+    ctx.strokeStyle = INK; ctx.fillStyle = cb > 1 ? "#FFF3A0" : "rgba(255,255,255,.92)"; ctx.lineWidth = 2;
+    rr(8, 8, cw2, 34, 7); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(21.5, 25); ctx.scale(cb, cb); kernel(0.95); ctx.restore();
+    ctx.fillStyle = INK; ctx.fillText(text, 34, 26);
   }
 
   // one clock, one kernel count: that is all the screen says while the ball is up
@@ -2566,35 +2886,21 @@
     ctx.fillText((S.superT > 0 ? "SUPER PUNT  \u00B7  " : S.blockT > 0 ? "BLOCKERS " + Math.ceil(S.blockT) + "  \u00B7  " : S.windT > 0 ? "TAILWIND " + Math.ceil(S.windT) + "  \u00B7  " : S.mult > 1 ? S.mult + "X  \u00B7  " : "") +
                  quarterName(S.q) + "  \u00B7  " + S.t.toFixed(1) + " S" + (hot ? "  \u00B7  NEW BEST" : ""), VW / 2, 62, cw - 12);
 
-    var sw = cw - 16, seg = (sw - 46) / 3;                                      // points turn into spins: 150 fills a segment
+    var sw = cw - 16, seg = (sw - 46) / 3;                                      // points turn into spins: each segment that fills is one more for the machine
     ctx.fillStyle = "#111"; ctx.strokeStyle = INK; ctx.lineWidth = 2;
     if (S.phase !== "over") {
-    rr(cx + 8, 88, sw, 15, 7); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = GOLD; ctx.font = "700 9px " + LABEL; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText("SPINS", cx + 15, 96);
-    for (var sg = 0; sg < 3; sg++) {
-      var sFrom = sg ? SPIN_AT[sg - 1] : 0, fill = clamp((S.pts - (S.base || 0) - sFrom) / (SPIN_AT[sg] - sFrom), 0, 1), gx = cx + 8 + 42 + sg * seg;
-      ctx.fillStyle = "#3A3A3A"; rr(gx, 92, seg - 4, 7, 3); ctx.fill();
-      if (fill > 0.02) { ctx.fillStyle = fill >= 1 ? "#fff" : GOLD; rr(gx, 92, (seg - 4) * fill, 7, 3); ctx.fill(); }
+      var justNow = now - (S.spinAt || -9) < 0.8;
+      rr(cx + 8, 88, sw, 15, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = justNow && Math.sin(now * 30) > 0 ? "#fff" : GOLD; ctx.font = "700 9px " + LABEL; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText("SPINS", cx + 15, 96);
+      for (var sg = 0; sg < 3; sg++) {
+        var sFrom = sg ? SPIN_AT[sg - 1] : 0, fill = clamp((S.pts - (S.base || 0) - sFrom) / (SPIN_AT[sg] - sFrom), 0, 1), gx = cx + 8 + 42 + sg * seg;
+        var blink = justNow && sg === (S.spinN || 0) - 1 && Math.sin(now * 30) > 0;      // the one that just filled
+        ctx.fillStyle = "#3A3A3A"; rr(gx, 92, seg - 4, 7, 3); ctx.fill();
+        if (fill > 0.02) { ctx.fillStyle = fill >= 1 ? (blink ? GOLD : "#fff") : GOLD; rr(gx, 92, (seg - 4) * fill, 7, 3); ctx.fill(); }
+      }
     }
-    }
-    ctx.strokeStyle = INK;
-    ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.lineWidth = 2;
-    var ln = Math.max(LIVES, lives), lw = 9 + ln * 25;
-    rr(VW - 8 - lw, 8, lw, 34, 7); ctx.fill(); ctx.stroke();
-    for (var lf = 0; lf < ln; lf++) {
-      var lx = VW - 8 - lw + 17 + lf * 25, on = lf < lives;
-      ctx.fillStyle = on ? "#8A4B1F" : "#D4D0C2"; ctx.strokeStyle = on ? INK : "#A9A596"; ctx.lineWidth = 1.8;
-      ctx.beginPath(); ctx.ellipse(lx, 25, 10, 6.5, -0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      if (on) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(lx - 3.5, 27); ctx.lineTo(lx + 3.5, 23); ctx.stroke(); }
-    }
-    ctx.strokeStyle = INK;
-    ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.lineWidth = 2;
-    rr(8, 8, 74, 34, 7); ctx.fill(); ctx.stroke();
-    ctx.save(); ctx.translate(21.5, 25); kernel(0.95); ctx.restore();
-    ctx.fillStyle = INK; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.font = "700 20px " + DISPLAY;
-    ctx.fillText(String(S.got), 34, 26);
+    chips(S.phase === "over" && lives <= 0);
   }
 
   function draw() {
@@ -2645,11 +2951,16 @@
         ctx.translate(x + o.w / 2, GY + TURF_H * 0.5); ctx.rotate(fe * fe * 1.5); ctx.translate(-(x + o.w / 2), -(GY + TURF_H * 0.5));
       }
       if (o.dream && S.dreaming > 0) ctx.globalAlpha = 0.38;       // in a dream the nemesis is pale and harmless
-      if (o.kind === "gate") { if (o.bot < GY - 20) gate(o, x); }
-      else if (o.kind === "wall") { if (o.bot < GY - 6) wall(x, o.w, o.bot); }
-      else if (o.kind === "bench") { if (o.bot < GY - 20) bench(x, o); }
+      // whoever stopped the punt has a little jump about it
+      var glee = o === S.killer && S.phase !== "play" && o.kind !== "gate" && o.kind !== "mascot" ? Math.abs(Math.sin(now * 13)) * 6 * clamp(1.5 - (now - (S.diedAt || 0)), 0, 1) : 0;
+      if (glee) { ctx.save(); ctx.translate(0, -glee); }
+      if (o.kind === "gate") { if (o.bot < BASE - 20) gate(o, x); }
+      else if (o.kind === "wall") { if (o.bot < FEET - 10) wall(x, o.w, o.bot, o.x); }
+      else if (o.kind === "bench") { if (o.bot < BASE - 20) bench(x, o); }
       else if (o.kind === "mascot") mascot(x + o.w / 2, o);
-      else player(x + o.w / 2, GY - o.jy + (o.jy > 0 ? 0 : TURF_H * 0.5), kit(AWAY, { up: o.st === 1, air: o.jy > 0 }));
+      else returner(x + o.w / 2, o);
+      if (glee) ctx.restore();
+      if (debugBoxes) { ctx.strokeStyle = "#FF00FF"; ctx.lineWidth = 1.5; boxes(o).forEach(function (b) { ctx.strokeRect(b[0] - S.dist, b[1], b[2], b[3]); }); }
       ctx.globalAlpha = 1;
       if (o.down) ctx.restore();
     }
@@ -2680,8 +2991,10 @@
       if (x > VW + 10) {                                // warn before it shows up
         ctx.fillStyle = RED; ctx.strokeStyle = INK; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(VW - 8, cr.y); ctx.lineTo(VW - 26, cr.y - 12); ctx.lineTo(VW - 26, cr.y + 12); ctx.closePath();
-        if (Math.sin(now * 14) > 0) { ctx.fill(); ctx.stroke(); }
+        if (S.phase === "play" && Math.sin(now * 14) > 0) { ctx.fill(); ctx.stroke(); }
       } else {
+        ctx.strokeStyle = "rgba(255,255,255,.38)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x + 8, cr.y); ctx.lineTo(x + 8 - (cr.vx - S.speed) * 0.045, cr.y - cr.vy * 0.045); ctx.stroke();
         if (S.dreaming > 0) ctx.globalAlpha = 0.38;
         if (cr.bomb) {                                  // a fat ear with a lit fuse; it flashes as the fuse runs down
           var hot = cr.fuse < 0.4 && Math.sin(now * 40) > 0;
@@ -2722,7 +3035,7 @@
       }
     }
     // the ball's shadow on the grass: smaller and fainter the higher it flies, and flashing red when the ground is close
-    var up = clamp((GY - S.y) / (GY - 30), 0, 1), low = S.phase === "play" && S.y > GY - 78 && S.vy > 40 && S.safe <= 0;
+    var up = clamp((FLOOR - S.y) / (FLOOR - 30), 0, 1), low = S.phase === "play" && S.y > FLOOR - 72 && S.vy > 40 && S.safe <= 0;
     ctx.fillStyle = low ? "rgba(215,38,30," + (0.55 + 0.3 * Math.sin(now * 22)).toFixed(2) + ")" : "rgba(0,0,0," + (0.46 - 0.2 * up).toFixed(2) + ")";
     ctx.beginPath(); ctx.ellipse(BX + up * 6, feet + 3, 14 - 7 * up, 4.4 - 2 * up, 0, 0, Math.PI * 2); ctx.fill();
     if (S.phase === "intro" || (S.phase === "over" && S.rw >= 1)) {
@@ -2743,6 +3056,16 @@
       ctx.save();
       ctx.translate(BX, S.y); ctx.scale(1 + S.sq * 0.28 - fall * 0.5, 1 - S.sq * 0.24 + fall);
       drawBall(0, 0, S.phase === "over" ? S.spin : S.spin + clamp(S.vy / 700, -0.6, 0.9));
+      ctx.restore();
+    }
+    if (S.phase === "dead" && now - (S.bamAt || -9) < 0.3) {       // a burst of lines where it was stopped
+      var bt = (now - S.bamAt) / 0.3;
+      ctx.save(); ctx.translate(BX + 6, S.bamY); ctx.rotate(0.35);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 4 * (1 - bt) + 0.5; ctx.lineCap = "round";
+      for (var ray = 0; ray < 8; ray++) {
+        var ra = ray * Math.PI / 4, r0 = 10 + bt * 12, r1 = 18 + bt * 26;
+        ctx.beginPath(); ctx.moveTo(Math.cos(ra) * r0, Math.sin(ra) * r0); ctx.lineTo(Math.cos(ra) * r1, Math.sin(ra) * r1); ctx.stroke();
+      }
       ctx.restore();
     }
     if (S.magnet && S.phase === "play") {                // the magnet: a turning dashed ring
@@ -2771,6 +3094,10 @@
       } else if (pt.kind === "dust" || pt.kind === "puff") {
         ctx.fillStyle = "rgba(255,252,235," + (fade * 0.8 * clear).toFixed(2) + ")";
         ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size * (1.4 - fade * 0.4), 0, Math.PI * 2); ctx.fill();
+      } else if (pt.kind === "grass") {
+        ctx.save(); ctx.globalAlpha = clamp(fade * 2.4, 0, 1) * clear; ctx.translate(pt.x, pt.y); ctx.rotate(pt.rot + pt.life * 9);
+        ctx.fillStyle = "#2E8B3F"; ctx.fillRect(-pt.size * 0.5, -0.9, pt.size, 1.8);
+        ctx.restore();
       } else if (pt.life < pt.pop) {
         ctx.save(); ctx.globalAlpha = clear; ctx.translate(pt.x, pt.y); ctx.rotate(pt.rot + pt.life * 12);
         kernel(pt.size / 6.5);
@@ -2819,17 +3146,17 @@
       var d0 = dayStats(0), d1 = dayStats(1), up = d0.count > 2 && d1.count > 2 && d0.sum / d0.count > d1.sum / d1.count;
       if (away) { handOff("Hang Time"); loaded(); return; }
       sign(["Hang Time", rival ? "A friend scored " + rival.toLocaleString("en-US") + ". Beat it." : goalDone ? (streak > 1 ? "Day " + streak + " in a row. Tomorrow: " + Math.min(7, 3 + streak) + " spins." : "Today's goal is done. Nice.") : "Today: " + goal.text.toLowerCase() + " for 2 spins", "Tap on the gold to punt"], 190, "gold");
-      if (slotVisible()) slotPanel();
+      if (slotVisible()) { chips(true); slotPanel(); }
       loaded();
       return;
     }
     hud();
     if (S.phase !== "over") { pocketDraw(); tutorDraw(); }
     if (S.phase === "over") {
-      if (away) { handOff(lives > 0 ? "Life " + (LIVES - lives + 1) + " of " + LIVES : "New game"); loaded(); return; }
+      if (away) { handOff(lives > 0 ? "Life " + (gameLives - lives + 1) + " of " + gameLives : extraLives ? "Extra life" : "New game"); loaded(); return; }
       // three short lines: the score, where the game stands, and the one thing worth knowing
-      var lines = [(S.newBest ? "New best: " : lives > 0 ? "Score " : "Final score ") + S.pts.toLocaleString("en-US"),
-                   lives > 0 ? lives + (lives === 1 ? " life left" : " lives left") : "Game over  \u00B7  Level " + levelOf(xp),
+      var lines = [(S.newBest ? "New best: " : lives > 0 || extraLives ? "Score " : "Final score ") + S.pts.toLocaleString("en-US"),
+                   lives > 0 ? lives + (lives === 1 ? " life left" : " lives left") : extraLives ? "Extra life won: this game goes on" : "Game over  \u00B7  Level " + levelOf(xp),
                    S.levelUp ? "Level " + S.levelUp + "!  +2 spins" :
                    S.goalDone ? "Daily goal done: +2 spins" :
                    S.unlocked ? "New ball: " + S.unlocked :
@@ -2861,8 +3188,14 @@
   // For testing only: open the page with #cctest to let a script read the game and tap.
   if (/cctest/.test(location.hash) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
     window.__cc = { state: function () { return S; }, tap: tap, ballX: function () { return BX; },
+                    step: function (dt, quiet) { update(dt || 1 / 60); if (!quiet) draw(); }, boxes: function (on) { debugBoxes = !!on; },
+                    hits: function (o, y) { return touches(o, S.dist + BX, y); },
+                    geo: function () { return { FEET: FEET, FLOOR: FLOOR, BASE: BASE, BED: BED, GY: GY, VW: VW }; },
                     dream: function () { S.dreamAt = S.t + 0.3; }, hold: function (on) { held = on; },
-                    rtp: measureRtp, start: measureStart, rtpAt: rtpAt, gauge: gaugeNow, superPunt: function () { pocket = "S"; }, care: function (d) { if (d !== undefined) dry = d; return { dry: dry, hotLeft: hotLeft, mercyNext: mercyNext, idleGift: idleGift, math: careMath() }; }, popcorn: popcorn, use: usePower, pocket: function (c) { if (c !== undefined) pocket = c; return pocket; }, played: function (n) { if (n !== undefined) played = n; return played; }, blockers: function () { pocket = "B"; }, lives: function () { return lives; },
+                    rtp: measureRtp, start: measureStart, rtpAt: rtpAt, gauge: gaugeNow, superPunt: function () { pocket = "S"; }, care: function (d) { if (d !== undefined) dry = d; return { dry: dry, hotLeft: hotLeft, mercyNext: mercyNext, idleGift: idleGift, math: careMath() }; }, popcorn: popcorn, use: usePower, pocket: function (c) { if (c !== undefined) pocket = c; return pocket; }, played: function (n) { if (n !== undefined) played = n; return played; }, blockers: function () { pocket = "B"; }, lives: function (n) { if (n !== undefined) lives = n; return lives; },
+                    force: function (syms) { forced = syms; }, golds: function (n) { if (n !== undefined) golds = n; return golds; },
+                    kit: function (k) { if (k !== undefined) { pocket = k.charAt(0); rack = k.slice(1).split(""); kitSave(); } return pocket + rack.join(""); },
+                    extra: function () { return extraLives; }, fx: function () { return { flights: flights.length, shownBank: shownBank, shownPot: shownPot, bank: bank }; }, pot: function (n) { if (n !== undefined) pot = n; return pot; }, pull: pull, keepIt: keep, tapSlot: slotTap, finishNow: function () { die("Downed"); },
                     spins: function (n) { spins += n; board(); }, slot: function () { return ui; } };
   }
 
