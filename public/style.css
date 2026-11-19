@@ -803,9 +803,9 @@ button.since-tag:hover { background: #000; color: #fff; }
   .cc-cards > :first-child { grid-row: span 2; }
   .cc-news { grid-column: 1 / -1; }
   .cc-news .stories { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
-  .cc-news .stories { margin-top: -.8rem; }
 }
 .cc-card .plot-body { padding-bottom: 1rem; }
+.cc-news .stories { margin-top: -.8rem; }                     /* like every other list that opens a card: the first row at the top */
 .cc-today { display: flex; flex-flow: row wrap; gap: 1rem 1.75rem; align-items: center; }
 .cc-mandala { flex: none; width: min(100%, 15rem); height: auto; aspect-ratio: 1; }
 .cc-today > div { flex: 1 1 14rem; }
