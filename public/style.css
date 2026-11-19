@@ -252,8 +252,7 @@ main {
   margin: 0 auto;
   padding: var(--gap) var(--gutter) 0;
 }
-main > * + * { margin-top: var(--gap); }
-main > [hidden]:first-child + * { margin-top: 0; }      /* the line for returning readers, before it has anything to say */
+main > :not([hidden]) ~ * { margin-top: var(--gap); }    /* the gap goes between blocks on show; hidden ones (the line for returning readers, before it has anything to say) do not count */
 
 /* a section's name: on a black header, with a gold notch */
 .sign {
@@ -286,7 +285,7 @@ main > [hidden]:first-child + * { margin-top: 0; }      /* the line for returnin
 .scores-row { display: flex; flex: 1; min-width: 0; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--seam) #000; }
 @media (hover: none) { .scores-row { scrollbar-width: none; } .scores-row::-webkit-scrollbar { display: none; } }   /* a finger needs no bar to scroll */
 .score {
-  flex: 1 0 16.5rem;
+  flex: 1 0 min(16.5rem, 100% - 2rem);
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);       /* nothing in a tile can push past its edge */
@@ -318,6 +317,7 @@ main > [hidden]:first-child + * { margin-top: 0; }      /* the line for returnin
   background: var(--gold);
   vertical-align: .1em;
 }
+.score-clock { margin-left: auto; }
 .score-clock b { font-variant-numeric: tabular-nums; }
 .score-clock b { margin-left: .3em; color: #fff; font-size: .95rem; }
 .score-clock b:empty { display: none; }
@@ -376,6 +376,7 @@ button.since-tag:hover { background: #000; color: #fff; }
 @media (min-width: 58rem) { .latest { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } }
 .latest-main { display: grid; grid-template-rows: 1fr; gap: var(--gap); min-width: 0; }    /* the top story takes whatever height the column has left */
 .latest.is-open { align-items: start; }      /* "More" has made the list long: the top story stops following it (site.js) */
+@media not all and (min-width: 58rem) { .latest.is-open .lead { min-height: clamp(14rem, 26vw, 21rem) !important; } }
 
 .stories, .runners, .briefs { list-style: none; margin: 0; padding: 0; }
 .story, .brief > div { text-wrap: pretty; }
@@ -498,7 +499,7 @@ button.since-tag:hover { background: #000; color: #fff; }
 }
 .chip:hover { border-color: #000; }
 .chip.is-on { border-color: #000; background: #000; color: var(--gold); }
-.briefs { padding: .2rem 1rem .3rem; }
+.briefs { padding: .5rem 1rem .3rem; }      /* room for the "You were here" label when its row is the first one shown */
 .justin .more-btn { width: auto; margin: .2rem 1rem 1rem; }
 .justin { display: flex; flex-direction: column; }
 .justin .briefs { flex: 1; }
@@ -605,7 +606,7 @@ button.since-tag:hover { background: #000; color: #fff; }
   .plot-wide .story-top { border-bottom: 0; }
   .plot-wide .story-top a { font: 700 clamp(1.9rem, 2.9vw, 2.7rem)/1.04 var(--display); }
   .plot-wide .stories { grid-row: 1 / span 2; grid-column: 2; columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
-  .plot-wide .stories { margin-top: -.8rem; }                 /* lifted by a row's top padding, so both columns start level with the top story */
+  .plot-wide .stories { margin-top: -.5rem; }                 /* lifted by a row's top padding, so both columns start level with the top story */
   .plot-wide .more-link { grid-column: 1; grid-row: 2; align-self: end; }
   .stories.cols { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
 }
@@ -618,11 +619,11 @@ button.since-tag:hover { background: #000; color: #fff; }
   }
   .field > .plot:last-child:nth-child(3n + 2) .story-top { border-bottom: 0; }
   .field > .plot:last-child:nth-child(3n + 2) .stories { grid-row: 1 / span 2; grid-column: 2; columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
-  .field > .plot:last-child:nth-child(3n + 2) .stories { margin-top: -.8rem; }
+  .field > .plot:last-child:nth-child(3n + 2) .stories { margin-top: -.5rem; }
   .field > .plot:last-child:nth-child(3n + 2) .more-link { grid-column: 1; grid-row: 2; align-self: end; }
   .field > .plot:last-child:nth-child(3n + 2) .stories .story:last-child { border-bottom: 1px solid var(--rule); }
 }
-.stories.cols { margin-top: -.8rem; }                         /* the same lift: the first row sits at the top of the card in either column */
+.stories.cols { margin-top: -.5rem; }                         /* the same lift: the first row sits at the top of the card in either column */
 /* in two columns every row keeps its rule, so both columns end the same way */
 .plot-wide .stories .story:last-child, .stories.cols .story:last-child, .cc-news .stories .story:last-child { border-bottom: 1px solid var(--rule); }
 
@@ -699,6 +700,23 @@ button.since-tag:hover { background: #000; color: #fff; }
 .odds .more-link { margin: 0; border: 0; border-top: 1px solid var(--seam); border-radius: 0; background: none; color: var(--gold); }
 .odds .more-link:hover { background: var(--coal); color: #fff; }
 .odds .more-link:focus-visible { outline-offset: -3px; }
+
+/* a sport's schedule, on the same black as the lines: what is done, then what is next */
+.sched-team { margin: .8rem 1rem 0; color: var(--gold); font: 700 .82rem/1.2 var(--label); text-transform: uppercase; letter-spacing: .05em; }
+.sched-list { list-style: none; margin: 0; padding: .25rem 1rem .4rem; }
+.sched-row { display: grid; grid-template-columns: 11rem minmax(0, 1fr) auto; gap: .1rem 1rem; align-items: baseline; padding: .55rem 0; border-bottom: 1px solid var(--seam); font: 700 1.02rem/1.25 var(--label); }
+.sched-row:last-child { border-bottom: 0; }
+.sched-row.is-done + .sched-row:not(.is-done) { border-top: 2px solid var(--gold); margin-top: -1px; }      /* where the results end and the games to come begin */
+.sched-when { color: var(--ash); font-size: .9rem; }
+.sched-res { color: var(--ash); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sched-res.is-w { color: var(--gold); }
+.sched-res a { color: inherit; text-decoration: underline; text-decoration-color: var(--seam); text-underline-offset: .2em; }
+.sched-res a:hover { text-decoration-color: currentColor; }
+.odds-note a { color: inherit; }
+@media (max-width: 34rem) { .sched-row { grid-template-columns: minmax(0, 1fr) auto; } .sched-when { grid-column: 1 / -1; } }
+/* a result on the strip */
+.score.is-final .score-res { color: var(--ash); font-size: .95rem; }
+.score.is-final .score-res.is-w { color: var(--gold); }
 
 /* ---------- search: the page gives way to the headlines that match ---------- */
 
@@ -784,7 +802,7 @@ button.since-tag:hover { background: #000; color: #fff; }
   font: 700 .95rem/1 var(--label);
   touch-action: manipulation;
 }
-@media (hover: hover) { .cc-mini:hover:not(:disabled):not([aria-pressed="true"]):not([aria-disabled="true"]) { background: var(--gold); } }
+@media (hover: hover) { .cc-mini:hover:where(:not(:disabled):not([aria-pressed="true"]):not([aria-disabled="true"])) { background: var(--gold); } }
 .cc-mini:disabled, .cc-mini[aria-disabled="true"] { border-color: var(--rule); background: #F3F1E8; color: var(--husk); }
 .cc-stage .cc-mini { border-color: #fff; }
 .cc-stage .cc-slotbtn { border-color: var(--gold); background: var(--gold); }
@@ -805,7 +823,7 @@ button.since-tag:hover { background: #000; color: #fff; }
   .cc-news .stories { columns: 2; column-gap: clamp(1.75rem, 3vw, 3rem); }
 }
 .cc-card .plot-body { padding-bottom: 1rem; }
-.cc-news .stories { margin-top: -.8rem; }                     /* like every other list that opens a card: the first row at the top */
+.cc-news .stories { margin-top: -.5rem; }                     /* like every other list that opens a card: the first row at the top */
 .cc-today { display: flex; flex-flow: row wrap; gap: 1rem 1.75rem; align-items: center; }
 .cc-mandala { flex: none; width: min(100%, 15rem); height: auto; aspect-ratio: 1; }
 .cc-today > div { flex: 1 1 14rem; }

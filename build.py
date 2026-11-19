@@ -330,12 +330,12 @@ def gather():
     items = [it for it in items if cutoff <= it["date"] <= NOW + dt.timedelta(hours=1)]
     # direct feeds win over Google News copies of the same story
     items.sort(key=lambda it: (not it["direct"], -it["date"].timestamp()))
-    seen, unique = set(), []
+    seen, unique = {}, []
     for it in items:
         key = story_key(it["title"]) or it["link"]
-        if key in seen:
+        if any(same_story(it, other) for other in seen.get(key, [])):
             continue
-        seen.add(key)
+        seen.setdefault(key, []).append(it)
         unique.append(it)
     unique.sort(key=lambda it: it["date"], reverse=True)
     return unique, missing, len(batches)
@@ -353,24 +353,51 @@ def gather():
 MEMORY = PUBLIC / "headlines.json"
 
 
+def held_row(row):
+    """One row of the published list as a story, or None for a row this build cannot use (damaged, or
+    from an older shape of the file)."""
+    if not (isinstance(row, list) and len(row) >= 9 and all(isinstance(v, str) for v in row[:6] + row[8:9])):
+        return None
+    title, link, source, _, when, sport, seen, _, key = row[:9]
+    date = parse_date(when)
+    if not (title and re.match(r"https?://", link) and date and isinstance(seen, (int, float)) and math.isfinite(seen)):
+        return None
+    return {"title": title, "link": link, "source": source, "date": date,
+            "sport": sport if sport in SPORT_NAMES else OTHER, "seen": int(seen), "feed": key}
+
+
 def recall():
-    """The rows of the last published list, and how the reading went: "ok", "none" (no list exists yet:
-    the first build) or "lost" (there may be one, but it could not be read)."""
+    """The rows of the last published list, and how the reading went: "ok"; "none" (there is no list yet:
+    the first build); "unread" (the site gave no answer: it timed out, or a server error); or "unusable"
+    (it answered, but not with a list in a shape this build can read)."""
     state = "none"
     for read in (lambda: fetch(SITE["url"] + "/headlines.json"), lambda: MEMORY.read_bytes()):
         try:
-            rows = json.loads(read())
-            if isinstance(rows, list):
-                return rows, "ok"
-            state = "lost"
+            raw = read()
         except urllib.error.HTTPError as exc:
-            if exc.code != 404:
-                state = "lost"
+            if exc.code != 404 and state == "none":
+                state = "unread"
+            continue
         except FileNotFoundError:
-            pass
+            continue
         except Exception:
-            state = "lost"
+            if state == "none":
+                state = "unread"
+            continue
+        try:
+            rows = json.loads(raw)
+        except ValueError:
+            rows = None
+        if isinstance(rows, list) and (not rows or sum(1 for r in rows if held_row(r)) * 2 >= len(rows)):
+            return rows, "ok"
+        if state == "none":
+            state = "unusable"
     return [], state
+
+
+def same_story(a, b):
+    """Two headlines with the same words are the same story when they are a day and a half apart at most."""
+    return abs((a["date"] - b["date"]).total_seconds()) <= 36 * 3600
 
 
 def remember(fresh, rows, state):
@@ -379,31 +406,32 @@ def remember(fresh, rows, state):
     moment this site first held it."""
     cutoff, soon = NOW - dt.timedelta(days=CFG["days_to_keep"]), NOW + dt.timedelta(hours=1)
     feeds = {feed_key(f): f for f in CFG["feeds"]}
-    held = {}
+    held, by_key = {}, {}
     for row in rows:
-        if not (isinstance(row, list) and len(row) >= 9 and all(isinstance(v, str) for v in row[:6] + row[8:9])):
-            continue                                 # a row from an older shape of the file, or a damaged one
-        title, link, source, _, when, sport, seen, _, key = row[:9]
-        date = parse_date(when)
-        if not (title and re.match(r"https?://", link) and date and isinstance(seen, (int, float)) and math.isfinite(seen)):
-            continue
-        held.setdefault(story_key(title) or link, {"title": title, "link": link, "source": source, "date": date,
-                                                   "sport": sport if sport in SPORT_NAMES else OTHER, "seen": int(seen), "feed": key})
+        it = held_row(row)
+        if it and it["link"] not in held:
+            held[it["link"]] = it
+            by_key.setdefault(story_key(it["title"]) or it["link"], []).append(it)
     now = int(NOW.timestamp())
-    by_link = {it["link"]: it for it in held.values()}
-    out, keys, links = [], set(), set()
+    out, matched, links = [], set(), set()
     for it in fresh:
         key = story_key(it["title"]) or it["link"]
-        before = held.get(key) or by_link.get(it["link"])          # the same story, even if its headline was rewritten
+        # The same story: the same address, or the same headline within a day and a half. A weekly feature
+        # that reuses its headline ("Hawkeye Report Podcast") is a new story each week.
+        before = held.get(it["link"]) or next((h for h in by_key.get(key, []) if same_story(h, it)), None)
+        mine = before and feeds.get(before["feed"])
+        if not it["direct"] and mine and "google_news" not in mine and before["link"] != it["link"]:
+            continue                                 # the outlet's own copy is held: it stays, with its own link (below)
+        if before:
+            matched.add(before["link"])
         # Never seen before: it is new now, if the old list could be read. If it could not, nobody can
         # say what is new, and calling everything new would be wrong, so the story's own date stands in.
         it["seen"] = min(now, before["seen"] if before else now if state == "ok" else int(it["date"].timestamp()))
         out.append(it)
-        keys.add(key)
         links.add(it["link"])
-    for key, it in held.items():
+    for link, it in held.items():
         feed = feeds.get(it["feed"])
-        if key in keys or it["link"] in links or not feed or not (cutoff <= it["date"] <= soon):
+        if link in matched or link in links or not feed or not (cutoff <= it["date"] <= soon):
             continue
         if it["source"] in CFG.get("skip_sources", []) or not belongs(feed, it["title"], it["link"]):
             continue
@@ -434,6 +462,17 @@ def snapshot():
     print("Pulling feeds\u2026", file=sys.stderr)
     fresh, missing, feeds = gather()
     rows, state = recall()
+    if state == "unread":
+        # Publishing without the held list would drop every story that has left its feed, for good: the
+        # next build reads the shorter list as the site's memory. Keep the last good site; the next run
+        # asks again.
+        print("::warning title=Headlines not read::The site's own headlines.json gave no answer; nothing was published.")
+        sys.exit("The list of headlines the site holds gave no answer; leaving the existing site alone.")
+    if state == "unusable":
+        # It answered with something this build cannot use. Stopping would never end (only a published
+        # build replaces the file), so the build goes on, with each story's own time as its first-seen time.
+        print("::warning title=Headlines list unusable::The site's headlines.json is not a list this build can read; "
+              "publishing anyway, and nothing is marked new this time.")
     items = remember(fresh, rows, state)
     print("  %d fresh, %d held from before, %d in all" % (len(fresh), len(items) - len(fresh), len(items)), file=sys.stderr)
     if len(items) < 5:
@@ -520,10 +559,12 @@ def story_groups(items, hours=48, half=18.0, need=10.0):
             reach = {id(c): len({m["source"] for m in near[id(c)]}) for c in left}
             most = max(reach.values())
             best = [c for c in left if reach[id(c)] == most]                 # still newest first
-            # the newest of them speaks for the story, unless an outlet's own feed has one nearly as new
-            face = (next((c for c in best if c["direct"] and (best[0]["date"] - c["date"]).total_seconds() <= 6 * 3600), None)
-                    or next((c for c in best if trusted(c)), best[0]))
-            core, by_source = near[id(face)], {}
+            hub = next((c for c in best if trusted(c)), best[0])             # the story: this headline and all that match it
+            core, by_source = near[id(hub)], {}
+            # The headline shown for it: an outlet's own, if one is nearly as new as the story's newest;
+            # else the newest from an outlet the site carries often; else the one the story was built on.
+            face = (next((c for c in core if c["direct"] and (core[0]["date"] - c["date"]).total_seconds() <= 6 * 3600), None)
+                    or next((c for c in core if trusted(c)), hub))
             for it in core:
                 age = (NOW - it["date"]).total_seconds() / 3600
                 by_source[it["source"]] = max(by_source.get(it["source"], 0.0), math.exp(-age / half))
@@ -535,12 +576,12 @@ def story_groups(items, hours=48, half=18.0, need=10.0):
 
 def front(items, runners=3):
     """The story to lead with, the other outlets on it, the next few stories, and everything used up.
-    The lead is the story the most outlets are on right now; when no story has more than one outlet,
-    it is simply the newest headline."""
+    The lead is the story the most outlets are on right now, told by an outlet the site trusts (see
+    trusted()); when no such story has more than one outlet, it is the newest headline from one."""
     pool = [it for it in items if on_topic(it)] or list(items)
     groups = story_groups(pool)
-    big = (next((g for g in groups if g["sources"] >= 3 and g["score"] >= 1), None)
-           or next((g for g in groups if g["sources"] >= 2 and g["score"] >= 1), None))
+    big = (next((g for g in groups if g["sources"] >= 3 and g["score"] >= 1 and trusted(g["face"])), None)
+           or next((g for g in groups if g["sources"] >= 2 and g["score"] >= 1 and trusted(g["face"])), None))
     used, also = set(), []
     if big:
         lead, named = big["face"], {big["face"]["source"]}
@@ -976,6 +1017,315 @@ def odds_parts(games, checked, sport=None, limit=None, more=False, lost=False):
     return section, strip
 
 
+# ---------- schedules and results: Iowa Athletics' own schedule data ----------
+#
+# The official athletics site's schedule pages load their games from a public JSON address on the same
+# site (no key; its robots.txt allows all). Each build reads every team there and shows plain facts only
+# (dates, opponents, results, TV networks), each finished game linked to its official box score. A team
+# that cannot be read keeps the games it had last time, read back from the live site's schedules.json.
+
+SCHED_API = "https://hawkeyesports.com/website-api"
+SCHED_TEAMS = [("football", "football"), ("mens-basketball", "mbball"), ("womens-basketball", "wbball"),
+               ("wrestling", "wrestling"), ("wrestling", "womens-wrestling"), ("volleyball", "wvball"),
+               ("baseball", "baseball"), ("softball", "softball")]       # (this site's sport, the athletics site's team)
+SCHED_LABEL = {"wrestling": "Men", "womens-wrestling": "Women"}         # said only where a sport has two teams
+SCHED_FILE = PUBLIC / "schedules.json"
+SCHED_VERSION = 2
+FINAL_FOR = dt.timedelta(hours=36)     # how long a result stays on the strip
+SCHED_STALE = dt.timedelta(days=7)     # saved games older than this are not trusted for what is coming up
+# The official pages name a game's TV network only by a logo: by its alt text, or by its title when the alt
+# is empty, or failing both by the address it links to. A logo none of these knows is named in the build log
+# (add it here) and left off the page.
+TV_NAMES = {"big ten network logo": "BTN", "2023-btn-logo": "BTN", "btn for iowa broadcast page": "BTN", "fs1": "FS1",
+            "fox logo": "FOX", "fox one logo": "FOX One", "cbs": "CBS", "cbs_logo": "CBS", "nbc logo": "NBC", "nbc-logo": "NBC",
+            "peacock logo": "Peacock", "nbcsn logo": "NBCSN", "b1g+": "B1G+", "big ten plus logo": "B1G+", "espn+": "ESPN+",
+            "espn+ logo": "ESPN+", "espn logo": "ESPN", "sec espn+ network": "SEC Network+", "accnx - espn": "ACCNX",
+            "flo wrestling": "FloWrestling", "tnt.png": "TNT", "bdg live dark background.png": "BDG Live"}
+TV_HOSTS = {"tntdrama.com": "TNT", "peacocktv.com": "Peacock", "rokfin.com": "Rokfin", "bdgsportslive.com": "BDG Live",
+            "flowrestling.org": "FloWrestling", "bigtenplus.com": "B1G+", "btn.com": "BTN", "plus.espn.com": "ESPN+"}
+NOT_TV = {"hawkeye radio network", "statbroadcast"}        # radio and live stats, not television
+UNKNOWN_TV = set()
+
+
+def sched_get(path, **query):
+    return json.loads(fetch(SCHED_API + path + "?" + urllib.parse.urlencode(query, safe=",")))
+
+
+def tv_of(links):
+    """The TV networks named by a game's logos, in the official page's order."""
+    out = []
+    for link in links or []:
+        if not isinstance(link, dict) or not isinstance(link.get("icon"), dict):
+            continue                                 # a plain link (tickets, notes), not a network
+        icon = link["icon"]
+        names = [str(icon.get(k) or "").strip().lower() for k in ("alt", "title")]
+        host = urllib.parse.urlsplit(str(link.get("link") or "")).netloc.lower().removeprefix("www.")
+        name = next((TV_NAMES[n] for n in names if n in TV_NAMES), None) or TV_HOSTS.get(host)
+        if name and name not in out:
+            out.append(name)
+        elif not name and not any(n in NOT_TV for n in names):
+            UNKNOWN_TV.add("%s / %s / %s" % (names[0] or "-", names[1] or "-", host or "-"))
+    return out
+
+
+def sched_game(e, team):
+    """One game as this site keeps it. Iowa's score comes first, worked out from the result, because the
+    official data sometimes has the two score fields the wrong way round."""
+    r = e.get("schedule_event_result") or {}
+    g = {"team": team, "when": str(e["datetime"]).replace(".000000Z", "Z"), "until": e.get("datetime_end"), "status": e.get("status") or "",
+         "tba": e.get("tba"), "tba_text": e.get("tba_text") or "", "all_day": bool(e.get("is_all_day")),
+         "where": e.get("venue_type") or "home", "location": e.get("location") or "",
+         "opponent": " / ".join(x for x in (e.get("opponent_name"), e.get("second_opponent_name")) if x) or e.get("tournament") or "",
+         "rank": e.get("opponent_ranking"), "tv": tv_of(e.get("schedule_event_links")), "link": e.get("box_score_url") or ""}
+    if r.get("result") in ("win", "loss", "tie"):
+        g["result"] = r["result"][0].upper()
+        try:
+            hi, lo = sorted((float(r["winning_score"]), float(r["losing_score"])), reverse=True)
+            g["score"] = [lo, hi] if r["result"] == "loss" else [hi, lo]
+        except (KeyError, TypeError, ValueError):
+            pass
+    if r.get("text") and str(r["text"]).strip() not in ("FINAL", "--", ""):
+        g["note"] = str(r["text"]).strip()            # "(OT)", or a tournament's outcome such as "Six Champions"
+    return g
+
+
+def sched_events(schedule_id, team):
+    """Every game on one team's schedule: the request the official schedule page makes. The whole answer is
+    refused if a game in it belongs to another schedule (the filter was not applied) or the pages do not add
+    up; a single game without its date, place or status is skipped."""
+    out, page, last, rows, total = [], 1, 1, 0, None
+    while page <= last and page <= 5:
+        got = sched_get("/schedule-events", page=page, per_page=100, sort="datetime",
+                        include="opponent,scheduleEventResult,scheduleEventLinks.icon", **{"filter[schedule_id]": schedule_id})
+        data = got.get("data") if isinstance(got, dict) else None
+        if not isinstance(data, list):
+            raise ValueError("no list of games")
+        for e in data:
+            rows += 1
+            if not isinstance(e, dict):
+                continue
+            if e.get("schedule_id") not in (None, schedule_id):
+                raise ValueError("a game from another schedule")
+            if (e.get("datetime") and e.get("status") and e.get("venue_type") in ("home", "away", "neutral")
+                    and not e.get("hide_from_specific_sport_schedule")):
+                out.append(sched_game(e, team))
+        meta = got.get("meta") or {}
+        last, total = int(meta.get("last_page") or 1), meta.get("total")
+        page += 1
+    if total is not None and int(total) != rows:
+        raise ValueError("%d games read of %s" % (rows, total))
+    return out
+
+
+def load_schedules():
+    """Every team's games, oldest first, keyed by the athletics site's name for the team."""
+    saved = {}
+    for read in (lambda: fetch(SITE["url"] + "/schedules.json"), lambda: SCHED_FILE.read_bytes()):
+        try:
+            got = json.loads(read())
+            if got.get("v") == SCHED_VERSION and isinstance(got.get("teams"), dict):
+                saved = {k: v for k, v in got["teams"].items() if isinstance(v, dict) and isinstance(v.get("games"), list)}
+                break
+        except Exception:
+            continue
+    try:                                             # each team's current schedule: the number changes with the season
+        ids = {s.get("slug"): s.get("schedule_id") for s in sched_get("/sports", per_page=100)["data"] if isinstance(s, dict)}
+    except Exception as exc:
+        print("  schedules: the list of teams could not be read: %s" % type(exc).__name__, file=sys.stderr)
+        ids = {}
+    UNKNOWN_TV.clear()
+    blocks = {}
+    for _, team in SCHED_TEAMS:
+        old = saved.get(team)
+        try:
+            if not ids.get(team):
+                raise ValueError("not listed")
+            games = sched_events(ids[team], team)
+            # An empty schedule is believed only when it is a new season's; the same schedule gone empty is a glitch.
+            if not games and old and old.get("id") == ids[team] and old["games"]:
+                raise ValueError("no games")
+            blocks[team] = {"id": ids[team], "at": NOW.isoformat(), "games": sorted(games, key=lambda g: g["when"])}
+            wrong = [g for g in games if "score" in g and g["result"] == "W" and g["score"][0] < g["score"][1]]
+            if wrong:
+                print("  schedules: %s: %d results with the scores the wrong way round" % (team, len(wrong)), file=sys.stderr)
+        except Exception as exc:
+            print("  schedules: %s: %s %s; %s" % (team, type(exc).__name__, exc,
+                  "keeping the %d games saved last time" % len(old["games"]) if old else "none saved"), file=sys.stderr)
+            if old:
+                blocks[team] = old
+    for name in sorted(UNKNOWN_TV):
+        print("  schedules: a TV logo this build does not know (alt / title / address): %s" % name, file=sys.stderr)
+    if blocks:
+        SCHED_FILE.write_text(json.dumps({"v": SCHED_VERSION, "at": NOW.isoformat(), "teams": blocks}, separators=(",", ":")), encoding="utf-8")
+    teams = {}
+    for team, block in blocks.items():
+        try:
+            fresh = NOW - dt.datetime.fromisoformat(block["at"]) <= SCHED_STALE
+        except (KeyError, TypeError, ValueError):
+            fresh = False
+        # a team not read for a week shows its results, but not games it can no longer vouch for
+        teams[team] = [g for g in block["games"] if isinstance(g, dict) and (fresh or g.get("status") == "completed")]
+    return teams
+
+
+def when_of(g):
+    try:
+        d = dt.datetime.fromisoformat(str(g["when"]).replace("Z", "+00:00"))
+        return d if d.tzinfo else d.replace(tzinfo=UTC)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def is_done(g):
+    return g.get("status") == "completed" and ("result" in g or bool(g.get("note")))
+
+
+def is_ahead(g):
+    """Still to come, or under way: a game counts for four hours after its start, an event of several
+    days until its last."""
+    d = when_of(g)
+    if not d or g.get("status") not in ("as_scheduled", "") or "result" in g:
+        return False
+    end = d + UNDERWAY
+    try:
+        until = dt.datetime.fromisoformat(str(g.get("until")).replace("Z", "+00:00")) if g.get("until") else None
+        end = max(end, until if until.tzinfo else until.replace(tzinfo=UTC)) if until else end
+    except ValueError:
+        pass
+    return end > NOW
+
+
+def sched_vs(g):
+    """"vs Purdue", "at No. 1 Nebraska", "vs Creighton (Des Moines, Iowa)"."""
+    where = g.get("where")
+    rank = "No. %s " % g["rank"] if g.get("rank") else ""
+    place = " (%s)" % g["location"] if where == "neutral" and g.get("location") else ""
+    return "%s %s%s%s" % ("at" if where == "away" else "vs", rank, g.get("opponent") or "TBA", place)
+
+
+def sched_score(g):
+    """"W 28-7", "L 88-93 (OT)", or a tournament's own words: "Six Champions"."""
+    note = g.get("note") or ""
+    if "score" in g and g.get("result"):
+        s = "-".join(("(%g)" if n < 0 else "%g") % n for n in g["score"])
+        return "%s %s%s" % (g["result"], s, " " + note if note and s not in note else "")
+    return note or {"W": "Won", "L": "Lost", "T": "Tied"}.get(g.get("result"), "")
+
+
+def sched_when(g, brief=False):
+    """The date and time as the page shows it before the script puts it in the reader's own time zone."""
+    d = when_of(g)
+    if not d or g.get("tba") == "date_tba":
+        return "Date to be set"
+    at = d.astimezone(CENTRAL)
+    day = "%s %d" % (at.strftime("%b"), at.day) if brief and d - NOW >= dt.timedelta(days=6) else at.strftime("%a, %b ") + str(at.day)
+    if brief and d - NOW < dt.timedelta(days=6):
+        day = at.strftime("%a")
+    if g.get("all_day"):
+        return day
+    if g.get("tba") == "time_tba":
+        return day + (", " + g["tba_text"] if g.get("tba_text") and len(g["tba_text"]) <= 20 else ", time to be set")
+    return "%s, %s CT" % (day, at.strftime("%I:%M %p").lstrip("0"))
+
+
+def timed(g):
+    """Whether the game has a set date and time the page's script can count down to."""
+    return bool(when_of(g)) and not g.get("tba") and not g.get("all_day")
+
+
+def record(games):
+    w, l, t = (sum(1 for g in games if g.get("result") == k and "score" in g) for k in "WLT")
+    return "%d-%d%s" % (w, l, "-%d" % t if t else "") if w + l + t else ""
+
+
+def matchup(g):
+    """The two sides as a tile says them, the visitor first: "Iowa at Illinois", "Purdue at Iowa"."""
+    rank = "No. %s " % g["rank"] if g.get("rank") else ""
+    them = "<span>%s%s</span>" % (esc(rank), esc(g.get("opponent") or "TBA"))
+    iowa = '<span class="is-iowa">Iowa</span>'
+    if g.get("where") == "home":
+        return "%s <i>at</i> %s" % (them, iowa)
+    return "%s <i>%s</i> %s" % (iowa, "at" if g.get("where") == "away" else "vs", them)
+
+
+def scoreboard(teams, lines):
+    """The strip at the top of the front page: results from the past day and a half, then each team's
+    next game in the coming ten days; four tiles at most, as many as fit across a laptop. A game the lines board has carries its line."""
+    finals, ahead = [], []
+    for sport, team in SCHED_TEAMS:
+        games = [g for g in teams.get(team) or [] if isinstance(g, dict)]
+        finals += [(when_of(g), sport, g) for g in games if is_done(g) and when_of(g) and NOW - FINAL_FOR <= when_of(g) <= NOW]
+        nxt = next((g for g in games if is_ahead(g) and timed(g) and when_of(g) <= NOW + dt.timedelta(days=10)), None)
+        if nxt:
+            ahead.append((when_of(nxt), sport, nxt))
+    finals.sort(key=lambda x: x[0], reverse=True)
+    ahead.sort(key=lambda x: x[0])
+    tiles = []
+    for d, sport, g in (finals[:2] + ahead)[:4]:
+        label = esc(SPORT_NAMES.get(sport, "Iowa") if g["team"] != "womens-wrestling" else "Women's wrestling")
+        if is_done(g):
+            res = sched_score(g)
+            tiles.append('<a class="score is-final" href="%s"><span class="score-top"><b>%s</b><span>Final</span></span>'
+                         '<span class="score-teams">%s</span><span class="score-foot"><span class="score-res%s">%s</span>'
+                         '<span>%s</span></span></a>' % (page_name(sport), label, matchup(g), " is-w" if g.get("result") == "W" else "",
+                                                         esc(res), esc(sched_when(g, brief=True).split(",")[0])))
+            continue
+        # the board's game, if it has this one: the same sport, starting within three hours, and Iowa on the same side
+        line = next((x for x in lines if ODDS_IDS.get(x["sport"]) == sport and abs((x["when"] - d).total_seconds()) < 3 * 3600
+                     and (g.get("where") == "neutral" or x["rows"][1]["iowa"] == (g.get("where") == "home"))), None)
+        said = short_read(line) if line else ""
+        foot = said if said and said != "No line yet" else ("On " + g["tv"][0] if g.get("tv") else "")
+        tiles.append('<a class="score" href="%s"><span class="score-top"><b>%s</b><span data-kick="%s" data-brief>%s</span></span>'
+                     '<span class="score-teams">%s</span><span class="score-foot"><span>%s</span>'
+                     '<span class="score-clock">%s <b data-count="%s"></b></span></span></a>' % (
+                         page_name(sport), label, iso(d), esc(sched_when(g, brief=True)), matchup(g), esc(foot),
+                         esc({"football": "Kickoff", "baseball": "First pitch", "softball": "First pitch",
+                              "mens-basketball": "Tip-off", "womens-basketball": "Tip-off"}.get(sport, "Starts")), iso(d)))
+    if not tiles:
+        return ""
+    return ('<nav class="scores" aria-label="Iowa games: the latest results and what is next"><span class="scores-tag">Games</span>'
+            '<div class="scores-row">%s</div></nav>' % "".join(tiles))
+
+
+def schedule_card(teams, sport):
+    """A sport's page: its record, the last three results and the next three games, from the official
+    schedule, with a link to it."""
+    blocks, owned = [], [team for s, team in SCHED_TEAMS if s == sport and teams.get(team)]
+    for team in owned:
+        games = [g for g in teams[team] if isinstance(g, dict)]
+        done = [g for g in games if is_done(g)]
+        ahead = [g for g in games if is_ahead(g)]
+        rows = []
+        for g in done[-3:]:
+            res = esc(sched_score(g))
+            if g.get("link", "").startswith("https://hawkeyesports.com/"):
+                res = '<a href="%s" rel="noopener">%s</a>' % (esc(g["link"]), res)
+            rows.append('<li class="sched-row is-done"><span class="sched-when">%s</span><span class="sched-vs">%s</span>'
+                        '<span class="sched-res%s">%s</span></li>' % (esc(sched_when(g).rsplit(",", 1)[0] if timed(g) else sched_when(g)),
+                                                                      esc(sched_vs(g)), " is-w" if g.get("result") == "W" else "", res))
+        for g in ahead[:3]:
+            when = esc(sched_when(g))
+            if timed(g):
+                when = '<span data-kick="%s">%s</span>' % (iso(when_of(g)), when)
+            rows.append('<li class="sched-row"><span class="sched-when">%s</span><span class="sched-vs">%s</span>'
+                        '<span class="sched-res">%s</span></li>' % (when, esc(sched_vs(g)), esc(", ".join(g.get("tv") or []))))
+        if not rows:
+            continue
+        rec = record(done)
+        head = ""
+        if len(owned) > 1:
+            head = '<h3 class="sched-team">%s%s</h3>' % (esc(SCHED_LABEL.get(team, "")), (" " + esc(rec)) if rec else "")
+        blocks.append(head + '<ol class="sched-list">%s</ol>' % "".join(rows))
+    if not blocks:
+        return ""
+    rec = record([g for team in owned for g in teams[team] if isinstance(g, dict) and is_done(g)]) if len(owned) == 1 else ""
+    slug = owned[0]
+    return ('<section class="odds sched" aria-labelledby="h-sched"><header class="odds-head"><h2 class="sign" id="h-sched">Schedule</h2>%s</header>'
+            '%s<p class="odds-note">Schedule and results from <a href="https://hawkeyesports.com/sports/%s/schedule" rel="noopener">Iowa Athletics</a>; '
+            'each result links to its box score.</p></section>' % (
+                '<p class="odds-src">Record %s</p>' % esc(rec) if rec else "", "".join(blocks), esc(slug)))
+
+
 SEARCH = ('<form class="search" role="search" action="./"><label class="search-label" for="q">Search every headline</label>'
           '<input id="q" type="search" placeholder="Search %d headlines" autocomplete="off" enterkeyhint="search"></form>')
 
@@ -1008,6 +1358,11 @@ def render(items, sports):
     except Exception as exc:                         # whatever goes wrong with the lines, the headlines still go out
         print("  odds: left off this build: %s %s" % (type(exc).__name__, exc), file=sys.stderr)
         games, checked, lost = [], None, True
+    try:
+        teams = load_schedules()
+    except Exception as exc:                         # nor with the schedules
+        print("  schedules: left off this build: %s %s" % (type(exc).__name__, exc), file=sys.stderr)
+        teams = {}
     tally = {}
     for it in items:
         tally[it["source"]] = tally.get(it["source"], 0) + 1
@@ -1015,7 +1370,7 @@ def render(items, sports):
     REGULARS.clear()
     REGULARS.update(regulars)
     others = len(tally) - len(regulars)
-    footer = ("      <p>%s links to %s from %s%s. Every headline leads to the publisher’s own story; some go by way of Google News.</p>\n      %s" % (
+    footer = ("      <p>%s links to %s from %s%s. Every headline leads to the publisher’s own story; some go by way of Google News. Schedules and results are Iowa Athletics’ own, from hawkeyesports.com.</p>\n      %s" % (
         esc(SITE["name"]), plural(len(items), "recent story", "recent stories"), ", ".join(esc(name) for name in regulars),
         " and %s" % plural(others, "other outlet", "other outlets") if others else "", DISCLAIMER))
     updated = '<p class="updated"><span class="updated-word">Updated </span>%s</p>' % stamp(NOW)
@@ -1035,6 +1390,7 @@ def render(items, sports):
         '<button class="chip" type="button" data-sport="%s" aria-pressed="false">%s</button>' % (esc(sp["id"]), esc(sp["name"]))
         for sp in sports if sp["id"] in in_list)
     _, nextup = odds_parts(games, checked)
+    nextup = scoreboard(teams, games) or nextup       # the official schedule when it could be read; else the games with lines
 
     sections = []
     for s in by_heat:
@@ -1073,6 +1429,7 @@ def render(items, sports):
         every = [it for it in items if it["sport"] == s["id"]]
         this_week = sum(1 for it in every if it["date"] >= week)
         board, _ = odds_parts(games, checked, sport=s["id"])
+        board = schedule_card(teams, s["id"]) + board
         if every:
             top = front(every, runners=0)
             rows = [it for it in every if it is not top["lead"]]

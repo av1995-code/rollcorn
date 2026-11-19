@@ -73,6 +73,15 @@ written to a page or a log. The free plan allows 500 credits a month, so lines a
 fourteen hours and kept in `public/odds.json` between builds. If part of a fetch fails it is tried once
 more three hours later, and then the fourteen hours come back. Without the key the board is simply empty.
 
+## Schedules and results
+
+The games strip on the front page and the Schedule card on each sport's page come from Iowa Athletics'
+own schedule data: the public JSON address its schedule pages load (hawkeyesports.com/website-api). It
+needs no key, and the site's robots.txt allows it. Only plain facts are shown (dates, opponents,
+results, TV networks), each result linked to its official box score, with a credit beside them. A team
+that cannot be read keeps the games it had last time (`public/schedules.json`, read back from the live
+site). TV networks are known only by the name on their logo; a new one goes in `TV_NAMES` in build.py.
+
 ## Keeping it fresh
 
 The workflow asks GitHub to rebuild twice an hour. GitHub runs scheduled workflows when it has room, and

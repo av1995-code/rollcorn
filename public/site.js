@@ -13,8 +13,6 @@
   function count(n, one, many) { return n.toLocaleString("en-US") + " " + (n === 1 ? one : many); }
   var calm = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   var q = doc.getElementById("q");
-  // "?fresh=..." is only how the newest copy of a page was asked for (see the refresh pill); it is not part of the address
-  try { if (/^\?fresh=\d+$/.test(location.search)) history.replaceState(null, "", location.pathname + location.hash); } catch (e) {}
 
   // ---------- times: "3 hours ago" under a headline, "3h" in the Latest column
   // Minutes and hours are counted; days go by the calendar, so "yesterday" means yesterday.
@@ -107,6 +105,13 @@
     all(".story, .brief").forEach(function (el) {
       var t = el.querySelector("time[datetime]");
       if (t && heldSince(t) > since) el.classList.add("is-new");
+    });
+    all(".more-btn[data-reveal]").forEach(function (btn) {     // a new story behind "Show N more" is brought out where it is
+      var late = all("[data-more].is-new", btn.parentNode);
+      if (!late.length) return;
+      late.forEach(function (el) { el.hidden = false; el.removeAttribute("data-more"); });
+      var left = all("[data-more]", btn.parentNode).length;
+      if (left) btn.textContent = "Show " + left + " more"; else btn.remove();
     });
     all(".briefs, .stories.cols").forEach(function (list) {     // newest first: one line marks where the reader left off,
       var rows = [].slice.call(list.children), n = 0;           // when everything above it is new and nothing below is
@@ -219,7 +224,8 @@
       pill.textContent = count(n, "new headline", "new headlines") + ". Show";
       pill.addEventListener("click", function () {
         put("rollcorn-since", data.at * 1000);                   // what is new is what this page did not have
-        // asked for by a new address, so no cache between here and the site can hand the old copy back
+        // Asked for by a new address, so no cache between here and the site can hand the old copy back. The
+        // address keeps it: put back to the plain one, a later Back could bring out the old page again.
         location.replace(location.pathname + "?fresh=" + d.at + location.hash);
       });
       slot.appendChild(pill);
@@ -253,7 +259,7 @@
     var ask = function () {
       if (index || fetching || (failed && Date.now() - failedAt < 3000)) return;
       fetching = true; failed = false;
-      fetch(beside("headlines.json")).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      fetch(beside("headlines.json") + (data ? "?" + data.at : "")).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
         .then(function (rows) { fetching = false; index = (Array.isArray(rows) ? rows : []).filter(Array.isArray); find(); })
         .catch(function () { fetching = false; failed = true; failedAt = Date.now(); find(); });   // the next keystroke tries again
     };
@@ -312,7 +318,7 @@
       var hits = index.filter(said ? function (r) {
         var hay = fold(r[0] + " " + r[2] + " " + r[3]);
         return words.every(function (w) { return hay.indexOf(w) >= 0; });
-      } : isNew);
+      } : function (r) { return isNew(r) && !(data && Number(r[6]) > data.at); });   // what came in after this page is the pill's to offer
       rowsEl.textContent = "";
       hits.slice(0, MOST).forEach(function (r) { rowsEl.appendChild(row(r, !!said && isNew(r))); });
       times();
@@ -381,7 +387,7 @@
       if (help) help.hidden = true;
     });
   }
-  var strip = doc.querySelector(".scores"), stripTag = strip && strip.querySelector(".scores-tag");
+  var strip = doc.querySelector(".scores"), stripTag = strip && strip.querySelector(".scores-tag"), stripWord = stripTag ? stripTag.textContent : "";
   function countdown() {
     var t = Date.now(), today = new Date(t), soon = false, lit = null;
     clocks.forEach(function (el) {
@@ -390,7 +396,7 @@
       if (left <= -UNDERWAY) {                                    // long over: the tile goes, and the strip with the last of them
         var row = tile && tile.parentNode;
         if (tile) tile.hidden = true;
-        if (row && !row.querySelector(".score:not([hidden])")) row.parentNode.hidden = true;
+        if (row && !row.querySelector(".score:not([hidden])") && row.parentNode.parentNode) row.parentNode.remove();
         return;
       }
       var d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60;
@@ -406,7 +412,7 @@
     if (strip) {                                                  // the day of a game looks like one, for as long as it is that day
       all(".score", strip).forEach(function (tile) { tile.classList.toggle("is-today", tile === lit); });
       strip.classList.toggle("is-gameday", !!lit);
-      var word = lit ? "Game day" : "Lines";
+      var word = lit ? "Game day" : stripWord;
       if (stripTag && stripTag.textContent !== word) stripTag.textContent = word;
     }
     return soon;
